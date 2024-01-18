@@ -43,10 +43,12 @@ export const WithTokenList = ({
 	const [tokenList, set_tokenList] = useState<TDict<TToken>>({});
 	const [tokenListExtra, set_tokenListExtra] = useState<TDict<TToken>>({});
 	const [tokenListCustom, set_tokenListCustom] = useState<TDict<TToken>>({});
+	const hashList = useMemo((): string => lists.join(','), [lists]);
 
 	useAsyncTrigger(async (): Promise<void> => {
+		const unhashedLists = hashList.split(',');
 		const responses = await Promise.allSettled(
-			lists.map(async (eachURI: string): Promise<AxiosResponse> => axios.get(eachURI))
+			unhashedLists.map(async (eachURI: string): Promise<AxiosResponse> => axios.get(eachURI))
 		);
 		const tokens: TTokenList['tokens'] = [];
 		const fromList: TTokenList[] = [];
@@ -54,7 +56,7 @@ export const WithTokenList = ({
 		for (const [index, response] of responses.entries()) {
 			if (response.status === 'fulfilled') {
 				tokens.push(...(response.value.data as TTokenList).tokens);
-				fromList.push({...(response.value.data as TTokenList), uri: lists[index]});
+				fromList.push({...(response.value.data as TTokenList), uri: unhashedLists[index]});
 			}
 		}
 
@@ -78,7 +80,7 @@ export const WithTokenList = ({
 			}
 		}
 		set_tokenList(tokenListTokens);
-	}, [lists, safeChainID]);
+	}, [hashList, safeChainID]);
 
 	useAsyncTrigger(async (): Promise<void> => {
 		const tokenListTokens: TDict<TToken> = {};
