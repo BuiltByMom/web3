@@ -1,0 +1,33 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"lib": ["dom", "esnext"],
+		"types": ["node", "bun-types"],
+		"declaration": true,
+		"sourceMap": true,
+		"moduleResolution": "node",
+		"isolatedModules": true,
+		"noFallthroughCasesInSwitch": true,
+		"jsx": "react-jsx",
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"allowSyntheticDefaultImports": true,
+		"downlevelIteration": true,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"outDir": "dist",
+		"rootDir": "src",
+		"skipLibCheck": true,
+		"strict": true,
+		"strictFunctionTypes": true,
+		"strictNullChecks": true,
+		"strictPropertyInitialization": true
+	},
+	"include": ["src"],
+	"exclude": ["**/node_modules", "**/dist", "**/.turbo"]
+}

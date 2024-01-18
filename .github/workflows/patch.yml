@@ -1,0 +1,32 @@
+name: Major
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  major-npm:
+    name: Major on NPM
+    runs-on: ubuntu-latest
+    if: "startsWith(github.event.head_commit.message, 'major:')"
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 16.x
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Dependencies
+        run: yarn
+
+      - run: yarn --cwd packages/web-lib publish-npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

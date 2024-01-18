@@ -1,12 +1,11 @@
 {
 	"name": "@builtbymom/web3",
-	"version": "0.0.5",
+	"version": "0.0.14",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"private": false,
 	"files": [
-		"dist",
-		"src"
+		"."
 	],
 	"type": "module",
 	"engines": {
@@ -14,8 +13,8 @@
 	},
 	"scripts": {
 		"dev": "tsc --watch",
-		"prebuild": "rm -rf dist/* && cp package.json dist/package.json && cd dist",
-		"prepublish": "rm -rf dist/* && cp package.json dist/package.json && cd dist && tsc",
+		"prebuilde": "rm -rf dist/* && cp package.json dist/package.json && cd dist",
+		"prepublishe": "rm -rf dist/* && cp package.json dist/package.json && cd dist && tsc",
 		"build": "tsc",
 		"lint": "eslint . --ext .js,.jsx,.ts,.tsx",
 		"test": "yarn node --experimental-vm-modules $(yarn bin jest)",
