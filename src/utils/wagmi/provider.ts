@@ -36,6 +36,8 @@ export type TWriteTransaction = {
 	contractAddress: TAddress | undefined;
 	statusHandler?: (status: typeof defaultTxStatus) => void;
 	onTrySomethingElse?: () => Promise<TTxResponse>; //When the abi is incorrect, ex: usdt, we may need to bypass the error and try something else
+	shouldDisplaySuccessToast?: boolean;
+	shouldDisplayErrorToast?: boolean;
 };
 
 type TPrepareWriteContractConfig<
@@ -103,7 +105,10 @@ export async function handleTx<TAbi extends Abi | readonly unknown[], TFunctionN
 		} else if (receipt.status === 'reverted') {
 			args.statusHandler?.({...defaultTxStatus, error: true});
 		}
-		toast.success('Transaction successful!');
+		// If shouldDisplaySuccessToast is undefined, we display the toast by default
+		if (args.shouldDisplaySuccessToast || args.shouldDisplaySuccessToast === undefined) {
+			toast.success('Transaction successful!');
+		}
 		return {isSuccessful: receipt.status === 'success', receipt};
 	} catch (error) {
 		if (!(error instanceof BaseError)) {
@@ -116,7 +121,10 @@ export async function handleTx<TAbi extends Abi | readonly unknown[], TFunctionN
 			}
 		}
 
-		toast.error(error.shortMessage);
+		// If shouldDisplayErrorToast is undefined, we display the toast by default
+		if (args.shouldDisplayErrorToast || args.shouldDisplayErrorToast === undefined) {
+			toast.error(error.shortMessage);
+		}
 		args.statusHandler?.({...defaultTxStatus, error: true});
 		console.error(error);
 		return {isSuccessful: false, error};
