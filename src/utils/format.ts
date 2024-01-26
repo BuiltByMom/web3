@@ -326,7 +326,14 @@ export function formatCurrency(amount: number, decimals = 2): string {
 	}).format(amount);
 }
 
-export function formatWithUnit(amount: number, minimumFractionDigits = 2, maximumFractionDigits = 2): string {
+export function formatWithUnit(
+	amount: number,
+	minimumFractionDigits = 2,
+	maximumFractionDigits = 2,
+	options?: {
+		locales?: string[];
+	}
+): string {
 	let locale = 'fr-FR';
 	if (typeof navigator !== 'undefined') {
 		locale = navigator.language || 'fr-FR';
@@ -334,7 +341,7 @@ export function formatWithUnit(amount: number, minimumFractionDigits = 2, maximu
 	if (maximumFractionDigits < minimumFractionDigits) {
 		maximumFractionDigits = minimumFractionDigits;
 	}
-	return new Intl.NumberFormat([locale, 'en-US'], {
+	return new Intl.NumberFormat(options?.locales || [locale, 'en-US'], {
 		minimumFractionDigits,
 		maximumFractionDigits,
 		notation: 'compact',
