@@ -145,16 +145,16 @@ export const WithTokenList = ({
 		if ((extraTokens || []).length > 0) {
 			const tokenListTokens: TNDict<TDict<TToken>> = {};
 			for (const eachToken of extraTokens || []) {
-				if (!tokenListTokens[eachToken.chainId]) {
-					tokenListTokens[eachToken.chainId] = {};
+				if (!tokenListTokens[eachToken.chainID]) {
+					tokenListTokens[eachToken.chainID] = {};
 				}
-				if (!tokenListTokens[eachToken.chainId][toAddress(eachToken.address)]) {
-					tokenListTokens[eachToken.chainId][toAddress(eachToken.address)] = {
+				if (!tokenListTokens[eachToken.chainID][toAddress(eachToken.address)]) {
+					tokenListTokens[eachToken.chainID][toAddress(eachToken.address)] = {
 						address: eachToken.address,
 						name: eachToken.name,
 						symbol: eachToken.symbol,
 						decimals: eachToken.decimals,
-						chainID: eachToken.chainId,
+						chainID: eachToken.chainID,
 						logoURI: eachToken.logoURI,
 						value: 0,
 						price: toNormalizedBN(0),
