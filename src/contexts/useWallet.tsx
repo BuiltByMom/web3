@@ -40,7 +40,7 @@ const defaultProps = {
  ******************************************************************************/
 const WalletContext = createContext<TWalletContext>(defaultProps);
 export const WalletContextApp = memo(function WalletContextApp({children}: {children: ReactElement}): ReactElement {
-	const {tokenList} = useTokenList();
+	const {currentNetworkTokenList} = useTokenList();
 	const {address} = useWeb3();
 	const {safeChainID} = useChainID();
 	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens', {
@@ -53,7 +53,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	 ** network.
 	 **************************************************************************/
 	const availableTokens = useMemo((): TUseBalancesTokens[] => {
-		const withTokenList = [...Object.values(tokenList)];
+		const withTokenList = [...Object.values(currentNetworkTokenList)];
 		const tokens: TUseBalancesTokens[] = [];
 		withTokenList.forEach((token): void => {
 			tokens.push({
@@ -76,7 +76,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 			});
 		}
 		return tokens;
-	}, [safeChainID, tokenList]);
+	}, [safeChainID, currentNetworkTokenList]);
 
 	/**************************************************************************
 	 ** This hook triggers the fetching of the balances of the available tokens
