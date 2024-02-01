@@ -17,7 +17,7 @@ import {isAddressEqual} from 'viem';
 
 export type TTokenListProps = {
 	tokenLists: TNDict<TDict<TToken>>;
-	currentNetworkTokenList: TNDict<TToken>;
+	currentNetworkTokenList: TDict<TToken>;
 	isFromExtraList: (props: {address: TAddress; chainID: number}) => boolean;
 	isCustomToken: (props: {address: TAddress; chainID: number}) => boolean;
 	getToken: (props: {address: TAddress; chainID: number}) => TToken | undefined;
