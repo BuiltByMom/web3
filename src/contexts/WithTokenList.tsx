@@ -12,16 +12,24 @@ import {toAddress} from '../utils/tools.address';
 import type {AxiosResponse} from 'axios';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TAddress} from '../types/address';
-import type {TDict, TToken, TTokenList} from '../types/mixed';
+import type {TDict, TNDict, TToken, TTokenList} from '../types/mixed';
 
 export type TTokenListProps = {
-	tokenList: TDict<TToken>;
-	getToken: (tokenAddress: TAddress) => TToken | undefined;
-	set_tokenList: Dispatch<SetStateAction<TDict<TToken>>>;
+	tokenLists: TNDict<TDict<TToken>>;
+	currentNetworkTokenList: TNDict<TToken>;
+	isFromExtraList: (props: {address: TAddress; chainID: number}) => boolean;
+	isCustomToken: (props: {address: TAddress; chainID: number}) => boolean;
+	getToken: (props: {address: TAddress; chainID: number}) => TToken | undefined;
+	addCustomToken: (token: TToken) => void;
+	set_tokenList: Dispatch<SetStateAction<TNDict<TDict<TToken>>>>;
 };
 const defaultProps: TTokenListProps = {
-	tokenList: {},
+	tokenLists: {},
+	currentNetworkTokenList: {},
+	isFromExtraList: (): boolean => false,
+	isCustomToken: (): boolean => false,
 	getToken: (): TToken | undefined => undefined,
+	addCustomToken: (): void => undefined,
 	set_tokenList: (): void => undefined
 };
 
@@ -40,11 +48,17 @@ export const WithTokenList = ({
 	const {safeChainID} = useChainID();
 	const {value: extraTokenlist} = useLocalStorageValue<string[]>('extraTokenlists');
 	const {value: extraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens');
-	const [tokenList, set_tokenList] = useState<TDict<TToken>>({});
-	const [tokenListExtra, set_tokenListExtra] = useState<TDict<TToken>>({});
-	const [tokenListCustom, set_tokenListCustom] = useState<TDict<TToken>>({});
+	const [tokenList, set_tokenList] = useState<TNDict<TDict<TToken>>>({});
+	const [tokenListExtra, set_tokenListExtra] = useState<TNDict<TDict<TToken>>>({});
+	const [tokenListCustom, set_tokenListCustom] = useState<TNDict<TDict<TToken>>>({});
 	const hashList = useMemo((): string => lists.join(','), [lists]);
 
+	/************************************************************************************
+	 ** This is the main function that will be called when the component mounts and
+	 ** whenever the hashList changes. It will fetch all the token lists from the
+	 ** hashList and then add them to the tokenList state.
+	 ** This is the list coming from the props.
+	 ************************************************************************************/
 	useAsyncTrigger(async (): Promise<void> => {
 		const unhashedLists = hashList.split(',');
 		const responses = await Promise.allSettled(
@@ -60,13 +74,13 @@ export const WithTokenList = ({
 			}
 		}
 
-		const tokenListTokens: TDict<TToken> = {};
+		const tokenListTokens: TNDict<TDict<TToken>> = {};
 		for (const eachToken of tokens) {
-			if (!tokenListTokens[toAddress(eachToken.address)]) {
-				if (eachToken.chainId !== safeChainID) {
-					continue;
-				}
-				tokenListTokens[toAddress(eachToken.address)] = {
+			if (!tokenListTokens[eachToken.chainId]) {
+				tokenListTokens[eachToken.chainId] = {};
+			}
+			if (!tokenListTokens[eachToken.chainId][toAddress(eachToken.address)]) {
+				tokenListTokens[eachToken.chainId][toAddress(eachToken.address)] = {
 					address: eachToken.address,
 					name: eachToken.name,
 					symbol: eachToken.symbol,
@@ -80,10 +94,15 @@ export const WithTokenList = ({
 			}
 		}
 		set_tokenList(tokenListTokens);
-	}, [hashList, safeChainID]);
+	}, [hashList]);
 
+	/************************************************************************************
+	 ** This trigger will load the lists from the extraTokenlist state. It's not about
+	 ** individual tokens, but about the whole list, that can be added by the user from
+	 ** the Smol tokenlist repository.
+	 ************************************************************************************/
 	useAsyncTrigger(async (): Promise<void> => {
-		const tokenListTokens: TDict<TToken> = {};
+		const tokenListTokens: TNDict<TDict<TToken>> = {};
 		const fromList: TTokenList[] = [];
 
 		for (const eachURI of extraTokenlist || []) {
@@ -93,11 +112,11 @@ export const WithTokenList = ({
 				fromList.push({...(fromUserList.value.data as TTokenList), uri: eachURI});
 				const {tokens} = fromUserList.value.data;
 				for (const eachToken of tokens) {
-					if (!tokenListTokens[toAddress(eachToken.address)]) {
-						if (eachToken.chainId !== safeChainID) {
-							continue;
-						}
-						tokenListTokens[toAddress(eachToken.address)] = {
+					if (!tokenListTokens[eachToken.chainId]) {
+						tokenListTokens[eachToken.chainId] = {};
+					}
+					if (!tokenListTokens[eachToken.chainId][toAddress(eachToken.address)]) {
+						tokenListTokens[eachToken.chainId][toAddress(eachToken.address)] = {
 							address: eachToken.address,
 							name: eachToken.name,
 							symbol: eachToken.symbol,
@@ -113,20 +132,24 @@ export const WithTokenList = ({
 			}
 		}
 		set_tokenListExtra(tokenListTokens);
-	}, [extraTokenlist, safeChainID]);
+	}, [extraTokenlist]);
 
+	/************************************************************************************
+	 ** This trigger will load the lists from the extraTokens state. It's about individual
+	 ** tokens, that can be added by the user.
+	 ************************************************************************************/
 	useAsyncTrigger(async (): Promise<void> => {
 		if (extraTokens === undefined) {
 			return;
 		}
 		if ((extraTokens || []).length > 0) {
-			const tokenListTokens: TDict<TToken> = {};
+			const tokenListTokens: TNDict<TDict<TToken>> = {};
 			for (const eachToken of extraTokens || []) {
-				if (!tokenListTokens[toAddress(eachToken.address)]) {
-					if (eachToken.chainId !== safeChainID) {
-						continue;
-					}
-					tokenListTokens[toAddress(eachToken.address)] = {
+				if (!tokenListTokens[eachToken.chainId]) {
+					tokenListTokens[eachToken.chainId] = {};
+				}
+				if (!tokenListTokens[eachToken.chainId][toAddress(eachToken.address)]) {
+					tokenListTokens[eachToken.chainId][toAddress(eachToken.address)] = {
 						address: eachToken.address,
 						name: eachToken.name,
 						symbol: eachToken.symbol,
@@ -141,16 +164,58 @@ export const WithTokenList = ({
 			}
 			set_tokenListCustom(tokenListTokens);
 		}
-	}, [extraTokens, safeChainID]);
+	}, [extraTokens]);
 
-	const aggregatedTokenList = useMemo(
-		() => ({...tokenList, ...tokenListExtra, ...tokenListCustom}),
-		[tokenList, tokenListExtra, tokenListCustom]
+	/************************************************************************************
+	 ** This will aggregate all the token lists into one big list, that will be used
+	 ** by the app.
+	 ************************************************************************************/
+	const aggregatedTokenList = useMemo((): TNDict<TDict<TToken>> => {
+		const aggregatedTokenList: TNDict<TDict<TToken>> = {};
+		for (const eachChainID of Object.keys(tokenList)) {
+			if (!aggregatedTokenList[Number(eachChainID)]) {
+				aggregatedTokenList[Number(eachChainID)] = {};
+			}
+			for (const eachToken of Object.values(tokenList[Number(eachChainID)])) {
+				aggregatedTokenList[Number(eachChainID)][toAddress(eachToken.address)] = eachToken;
+			}
+		}
+
+		for (const eachChainID of Object.keys(tokenListExtra)) {
+			if (!aggregatedTokenList[Number(eachChainID)]) {
+				aggregatedTokenList[Number(eachChainID)] = {};
+			}
+			for (const eachToken of Object.values(tokenListExtra[Number(eachChainID)])) {
+				aggregatedTokenList[Number(eachChainID)][toAddress(eachToken.address)] = eachToken;
+			}
+		}
+
+		for (const eachChainID of Object.keys(tokenListCustom)) {
+			if (!aggregatedTokenList[Number(eachChainID)]) {
+				aggregatedTokenList[Number(eachChainID)] = {};
+			}
+			for (const eachToken of Object.values(tokenListCustom[Number(eachChainID)])) {
+				aggregatedTokenList[Number(eachChainID)][toAddress(eachToken.address)] = eachToken;
+			}
+		}
+		return aggregatedTokenList;
+	}, [tokenList, tokenListCustom, tokenListExtra]);
+
+	/************************************************************************************
+	 ** This will return the token list for the current network.
+	 ************************************************************************************/
+	const currentNetworkList = useMemo(
+		() => aggregatedTokenList?.[safeChainID] || {},
+		[aggregatedTokenList, safeChainID]
 	);
 
+	/************************************************************************************
+	 ** This will return a specific token from the token list, or an empty object if the
+	 ** token is not found.
+	 ************************************************************************************/
 	const getToken = useCallback(
-		(tokenAddress: TAddress): TToken => {
-			const fromTokenList = aggregatedTokenList[toAddress(tokenAddress)];
+		(props: {address: TAddress; chainID: number}): TToken => {
+			const fromTokenList = aggregatedTokenList?.[props.chainID]?.[toAddress(props.address)];
 			if (fromTokenList) {
 				return fromTokenList;
 			}
@@ -159,13 +224,51 @@ export const WithTokenList = ({
 		[aggregatedTokenList]
 	);
 
+	/************************************************************************************
+	 ** This will return true if the token is from the tokenListExtra.
+	 ************************************************************************************/
+	const isFromExtraList = useCallback(
+		(props: {address: TAddress; chainID: number}): boolean => {
+			return Boolean(tokenListExtra?.[props.chainID]?.[toAddress(props.address)]);
+		},
+		[tokenListExtra]
+	);
+
+	/************************************************************************************
+	 ** This will return true if the token is from the tokenListCustom, aka added by the
+	 ** user as an individual token.
+	 ************************************************************************************/
+	const isCustomToken = useCallback(
+		(props: {address: TAddress; chainID: number}): boolean => {
+			return Boolean(tokenListCustom?.[props.chainID]?.[toAddress(props.address)]);
+		},
+		[tokenListCustom]
+	);
+
+	/************************************************************************************
+	 ** This will add a token to the tokenListCustom.
+	 ************************************************************************************/
+	const addCustomToken = useCallback((token: TToken): void => {
+		set_tokenListCustom(previous => {
+			if (!previous[token.chainID]) {
+				previous[token.chainID] = {};
+			}
+			previous[token.chainID][toAddress(token.address)] = token;
+			return previous;
+		});
+	}, []);
+
 	const contextValue = useMemo(
 		(): TTokenListProps => ({
-			tokenList: aggregatedTokenList,
+			tokenLists: aggregatedTokenList,
+			currentNetworkTokenList: currentNetworkList,
+			isFromExtraList,
+			isCustomToken,
 			set_tokenList,
+			addCustomToken,
 			getToken
 		}),
-		[aggregatedTokenList, getToken]
+		[addCustomToken, aggregatedTokenList, currentNetworkList, getToken, isCustomToken, isFromExtraList]
 	);
 
 	return <TokenList.Provider value={contextValue}>{children}</TokenList.Provider>;
