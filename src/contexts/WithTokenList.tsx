@@ -17,7 +17,7 @@ import type {TDict, TNDict, TToken, TTokenList} from '../types/mixed';
 export type TTokenListProps = {
 	tokenLists: TNDict<TDict<TToken>>;
 	currentNetworkTokenList: TNDict<TToken>;
-	isFromExtaList: (props: {address: TAddress; chainID: number}) => boolean;
+	isFromExtraList: (props: {address: TAddress; chainID: number}) => boolean;
 	isCustomToken: (props: {address: TAddress; chainID: number}) => boolean;
 	getToken: (props: {address: TAddress; chainID: number}) => TToken | undefined;
 	addCustomToken: (token: TToken) => void;
@@ -26,7 +26,7 @@ export type TTokenListProps = {
 const defaultProps: TTokenListProps = {
 	tokenLists: {},
 	currentNetworkTokenList: {},
-	isFromExtaList: (): boolean => false,
+	isFromExtraList: (): boolean => false,
 	isCustomToken: (): boolean => false,
 	getToken: (): TToken | undefined => undefined,
 	addCustomToken: (): void => undefined,
@@ -227,7 +227,7 @@ export const WithTokenList = ({
 	/************************************************************************************
 	 ** This will return true if the token is from the tokenListExtra.
 	 ************************************************************************************/
-	const isFromExtaList = useCallback(
+	const isFromExtraList = useCallback(
 		(props: {address: TAddress; chainID: number}): boolean => {
 			return Boolean(tokenListExtra?.[props.chainID]?.[toAddress(props.address)]);
 		},
@@ -262,13 +262,13 @@ export const WithTokenList = ({
 		(): TTokenListProps => ({
 			tokenLists: aggregatedTokenList,
 			currentNetworkTokenList: currentNetworkList,
-			isFromExtaList,
+			isFromExtraList,
 			isCustomToken,
 			set_tokenList,
 			addCustomToken,
 			getToken
 		}),
-		[addCustomToken, aggregatedTokenList, currentNetworkList, getToken, isCustomToken, isFromExtaList]
+		[addCustomToken, aggregatedTokenList, currentNetworkList, getToken, isCustomToken, isFromExtraList]
 	);
 
 	return <TokenList.Provider value={contextValue}>{children}</TokenList.Provider>;
