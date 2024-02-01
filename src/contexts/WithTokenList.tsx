@@ -112,16 +112,16 @@ export const WithTokenList = ({
 				fromList.push({...(fromUserList.value.data as TTokenList), uri: eachURI});
 				const {tokens} = fromUserList.value.data;
 				for (const eachToken of tokens) {
-					if (!tokenListTokens[eachToken.chainId]) {
-						tokenListTokens[eachToken.chainId] = {};
+					if (!tokenListTokens[eachToken.chainId ?? eachToken.chainID]) {
+						tokenListTokens[eachToken.chainId ?? eachToken.chainID] = {};
 					}
-					if (!tokenListTokens[eachToken.chainId][toAddress(eachToken.address)]) {
-						tokenListTokens[eachToken.chainId][toAddress(eachToken.address)] = {
+					if (!tokenListTokens[eachToken.chainId ?? eachToken.chainID][toAddress(eachToken.address)]) {
+						tokenListTokens[eachToken.chainId ?? eachToken.chainID][toAddress(eachToken.address)] = {
 							address: eachToken.address,
 							name: eachToken.name,
 							symbol: eachToken.symbol,
 							decimals: eachToken.decimals,
-							chainID: eachToken.chainId,
+							chainID: eachToken.chainID ?? eachToken.chainId,
 							logoURI: eachToken.logoURI,
 							value: 0,
 							price: toNormalizedBN(0),
@@ -145,16 +145,17 @@ export const WithTokenList = ({
 		if ((extraTokens || []).length > 0) {
 			const tokenListTokens: TNDict<TDict<TToken>> = {};
 			for (const eachToken of extraTokens || []) {
-				if (!tokenListTokens[eachToken.chainID]) {
-					tokenListTokens[eachToken.chainID] = {};
+
+				if (!tokenListTokens[eachToken.chainID ?? eachToken.chainId]) {
+					tokenListTokens[eachToken.chainID ?? eachToken.chainId] = {};
 				}
-				if (!tokenListTokens[eachToken.chainID][toAddress(eachToken.address)]) {
-					tokenListTokens[eachToken.chainID][toAddress(eachToken.address)] = {
+				if (!tokenListTokens[eachToken.chainID ?? eachToken.chainId][toAddress(eachToken.address)]) {
+					tokenListTokens[eachToken.chainID ?? eachToken.chainId][toAddress(eachToken.address)] = {
 						address: eachToken.address,
 						name: eachToken.name,
 						symbol: eachToken.symbol,
 						decimals: eachToken.decimals,
-						chainID: eachToken.chainID,
+						chainID: eachToken.chainID ?? eachToken.chainId,
 						logoURI: eachToken.logoURI,
 						value: 0,
 						price: toNormalizedBN(0),
