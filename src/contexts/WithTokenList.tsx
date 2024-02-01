@@ -13,6 +13,7 @@ import type {AxiosResponse} from 'axios';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TAddress} from '../types/address';
 import type {TDict, TNDict, TToken, TTokenList} from '../types/mixed';
+import {isAddressEqual} from 'viem';
 
 export type TTokenListProps = {
 	tokenLists: TNDict<TDict<TToken>>;
@@ -47,7 +48,7 @@ export const WithTokenList = ({
 }: TTokenListProviderProps): ReactElement => {
 	const {safeChainID} = useChainID();
 	const {value: extraTokenlist} = useLocalStorageValue<string[]>('extraTokenlists');
-	const {value: extraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens');
+	const {value: extraTokens, set: set_extraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens');
 	const [tokenList, set_tokenList] = useState<TNDict<TDict<TToken>>>({});
 	const [tokenListExtra, set_tokenListExtra] = useState<TNDict<TDict<TToken>>>({});
 	const [tokenListCustom, set_tokenListCustom] = useState<TNDict<TDict<TToken>>>({});
@@ -145,7 +146,6 @@ export const WithTokenList = ({
 		if ((extraTokens || []).length > 0) {
 			const tokenListTokens: TNDict<TDict<TToken>> = {};
 			for (const eachToken of extraTokens || []) {
-
 				if (!tokenListTokens[eachToken.chainID ?? eachToken.chainId]) {
 					tokenListTokens[eachToken.chainID ?? eachToken.chainId] = {};
 				}
@@ -249,14 +249,19 @@ export const WithTokenList = ({
 	/************************************************************************************
 	 ** This will add a token to the tokenListCustom.
 	 ************************************************************************************/
-	const addCustomToken = useCallback((token: TToken): void => {
-		set_tokenListCustom(previous => {
-			if (!previous[token.chainID]) {
-				previous[token.chainID] = {};
-			}
-			previous[token.chainID][toAddress(token.address)] = token;
-			return previous;
-		});
+	const addCustomToken = useCallback((token: TToken) => {
+		const extraTokensArray: Omit<TToken, 'balance' | 'price'>[] = extraTokens ?? [];
+		const {balance, price, ...restTokenProps} = token;
+
+		if (
+			!extraTokensArray.some(
+				customToken =>
+					isAddressEqual(customToken.address, restTokenProps.address) &&
+					customToken.chainID === restTokenProps.chainID
+			)
+		) {
+			set_extraTokens([...extraTokensArray, restTokenProps]);
+		}
 	}, []);
 
 	const contextValue = useMemo(
