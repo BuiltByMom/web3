@@ -20,13 +20,13 @@ export function handleInputChangeEventValue(e: React.ChangeEvent<HTMLInputElemen
 					amountStr = amountParts[0] + '.' + amountParts[1].slice(0, decimals);
 				}
 				const raw = parseUnits((amountStr || '0') as `${number}`, decimals || 18);
-				return {raw: raw, normalized: Number(amountStr) || 0};
+				return {raw: raw, normalized: Number(amountStr) || 0, display: amountStr};
 			}
 		}
 	}
 
 	const raw = parseUnits(amount.toFixed(decimals) || '0', decimals || 18);
-	return {raw: raw, normalized: amount || 0};
+	return {raw: raw, normalized: amount || 0, display: amount.toFixed(decimals)};
 }
 
 export function handleInputChangeValue(value: string, decimals?: number): TNormalizedBN {
@@ -48,5 +48,5 @@ export function handleInputChangeValue(value: string, decimals?: number): TNorma
 	}
 
 	const raw = parseUnits(amount || '0', decimals || 18);
-	return {raw: raw, normalized: Number(amount || 0)};
+	return {raw: raw, normalized: Number(amount || 0), display: amount};
 }

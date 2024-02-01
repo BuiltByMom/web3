@@ -5,7 +5,7 @@ import {isZero} from './tools.is';
 
 import type {TNormalizedBN, TNumberish} from '../types/mixed';
 
-export const DefaultTNormalizedBN: TNormalizedBN = {raw: 0n, normalized: 0};
+export const DefaultTNormalizedBN: TNormalizedBN = {raw: 0n, normalized: 0, display: '0'};
 
 export const toSafeAmount = (value: `${number}`, max: bigint, d = 18): bigint => {
 	if (value === formatUnits(max || 0n, d)) {
@@ -62,10 +62,17 @@ export const toNormalizedAmount = (v: bigint, d?: number): string => {
 	return formatAmount(toNormalizedValue(v, d ?? 18), 6, 6);
 };
 
-export const toNormalizedBN = (value: TNumberish, decimals?: number): TNormalizedBN => ({
-	raw: toBigInt(value),
-	normalized: Number(formatUnits(toBigInt(value), decimals ?? 18))
-});
+export function toNormalizedBN(value: TNumberish, decimals?: number): TNormalizedBN {
+	return {
+		raw: toBigInt(value),
+		normalized: Number(formatUnits(toBigInt(value), decimals ?? 18)),
+		display: formatUnits(toBigInt(value), decimals ?? 18)
+	};
+}
+
+export function fromNormalized(value: number | string, decimals = 18): bigint {
+	return vParseUnits(eToNumber(String(value)), decimals);
+}
 
 export function parseUnits(value: TNumberish, decimals = 18): bigint {
 	const valueAsNumber = Number(value);
@@ -390,4 +397,44 @@ export function formatCounterValueRaw(amount: number | string, price: number): s
 		return formatAmount(value, 0, 0);
 	}
 	return formatAmount(value, 2, 2);
+}
+
+/******************************************************************
+ * Converts e-Notation Numbers to Plain Numbers
+ ******************************************************************
+ * @function eToNumber(number)
+ * @version  1.00
+ * @param   {e nottation Number} valid Number in exponent format.
+ *          pass number as a string for very large 'e' numbers or with large fractions
+ *          (none 'e' number returned as is).
+ * @return  {string}  a decimal number string.
+ * @author  Mohsen Alyafei
+ * @date    17 Jan 2020
+ * Note: No check is made for NaN or undefined input numbers.
+ *
+ *****************************************************************/
+export function eToNumber(num: string): string {
+	let sign = '';
+	(num += '').charAt(0) == '-' && ((num = num.substring(1)), (sign = '-'));
+	const arr = num.split(/[e]/gi);
+	if (arr.length < 2) {
+		return sign + num;
+	}
+	const dot = '.';
+	// eslint-disable-next-line prefer-destructuring
+	let n = arr[0];
+	const exp = +arr[1];
+	let w = (n = n.replace(/^0+/, '')).replace(dot, '');
+	const pos = n.split(dot)[1] ? n.indexOf(dot) + exp : w.length + exp;
+	const L = pos - w.length;
+	const s = '' + BigInt(w);
+	w = exp >= 0 ? (L >= 0 ? s + '0'.repeat(L) : r()) : pos <= 0 ? '0' + dot + '0'.repeat(Math.abs(pos)) + s : r();
+	const V = w.split(dot);
+	if ((Number(V[0]) == 0 && Number(V[1]) == 0) || (+w == 0 && +s == 0)) {
+		w = '0';
+	} //** added 9/10/2021
+	return sign + w;
+	function r(): string {
+		return w.replace(new RegExp(`^(.{${pos}})(.)`), `$1${dot}$2`);
+	}
 }

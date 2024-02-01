@@ -24,7 +24,7 @@ export type VoidPromiseFunction = () => Promise<void>;
  ** A proper way to use the bigint conversion
  ******************************************************************************/
 export type TNumberish = bigint | number | string | `${number}`; //wagmi weird type
-export type TNormalizedBN = {raw: bigint; normalized: number};
+export type TNormalizedBN = {raw: bigint; normalized: number; display: string};
 
 /*******************************************************************************
  ** A classic ERC20 token & the one wrapped by chainID
