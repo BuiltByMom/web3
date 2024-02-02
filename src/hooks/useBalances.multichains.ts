@@ -204,9 +204,6 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** send in a worker.
 	 **************************************************************************/
 	const onUpdate = useCallback(async (): Promise<TChainTokens> => {
-		if (!userAddress) {
-			return {};
-		}
 		const tokenList = deserialize(stringifiedTokens) || [];
 		const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
 		if (isZero(tokens.length)) {
@@ -235,35 +232,59 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 				chunks.push(tokens.slice(i, i + 5_000));
 			}
 
-			for (const chunkTokens of chunks) {
-				const [newRawData, err] = await getBalances(chainID || 1, userAddress, chunkTokens);
-				if (err) {
-					set_error(err as Error);
-				}
-
-				if (toAddress(userAddress) !== data?.current?.address) {
-					data.current = {
-						address: toAddress(userAddress),
-						balances: {},
-						nonce: 0
-					};
-				}
-				data.current.address = toAddress(userAddress);
-				for (const [address, element] of Object.entries(newRawData)) {
-					if (!updated[chainID]) {
-						updated[chainID] = {};
+			/****************************************************************************
+			 ** If the user isn't connected, we still want to have some balance
+			 ** information to seemlessly display the UI. We are taking every tokens from
+			 ** the list and setting the balance to 0.
+			 ** Otherwise, we just fetch the balances for each chunk of token.
+			 ****************************************************************************/
+			if (!userAddress) {
+				for (const chunkTokens of chunks) {
+					for (const token of chunkTokens) {
+						if (!data.current.balances[chainID]) {
+							data.current.balances[chainID] = {};
+						}
+						data.current.balances[chainID][token.address] = {
+							...data.current.balances[chainID][token.address],
+							balance: toNormalizedBN(0, token.decimals || 18),
+							chainID: chainID,
+							price: toNormalizedBN(0, 6),
+							value: 0
+						};
 					}
-					updated[chainID][address] = element;
-
-					if (!data.current.balances[chainID]) {
-						data.current.balances[chainID] = {};
-					}
-					data.current.balances[chainID][address] = {
-						...data.current.balances[chainID][address],
-						...element
-					};
+					data.current.nonce += 1;
 				}
-				data.current.nonce += 1;
+			} else {
+				for (const chunkTokens of chunks) {
+					const [newRawData, err] = await getBalances(chainID || 1, userAddress, chunkTokens);
+					if (err) {
+						set_error(err as Error);
+					}
+
+					if (toAddress(userAddress) !== data?.current?.address) {
+						data.current = {
+							address: toAddress(userAddress),
+							balances: {},
+							nonce: 0
+						};
+					}
+					data.current.address = toAddress(userAddress);
+					for (const [address, element] of Object.entries(newRawData)) {
+						if (!updated[chainID]) {
+							updated[chainID] = {};
+						}
+						updated[chainID][address] = element;
+
+						if (!data.current.balances[chainID]) {
+							data.current.balances[chainID] = {};
+						}
+						data.current.balances[chainID][address] = {
+							...data.current.balances[chainID][address],
+							...element
+						};
+					}
+					data.current.nonce += 1;
+				}
 			}
 
 			set_balances(
@@ -314,36 +335,59 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 				for (let i = 0; i < tokens.length; i += 2_000) {
 					chunks.push(tokens.slice(i, i + 2_000));
 				}
-
-				for (const chunkTokens of chunks) {
-					const [newRawData, err] = await getBalances(chainID || 1, toAddress(userAddress), chunkTokens);
-					if (err) {
-						set_error(err as Error);
-					}
-					if (toAddress(userAddress) !== data?.current?.address) {
-						data.current = {
-							address: toAddress(userAddress),
-							balances: {},
-							nonce: 0
-						};
-					}
-					data.current.address = toAddress(userAddress);
-
-					for (const [address, element] of Object.entries(newRawData)) {
-						if (!updated[chainID]) {
-							updated[chainID] = {};
+				/****************************************************************************
+				 ** If the user isn't connected, we still want to have some balance
+				 ** information to seemlessly display the UI. We are taking every tokens from
+				 ** the list and setting the balance to 0.
+				 ** Otherwise, we just fetch the balances for each chunk of token.
+				 ****************************************************************************/
+				if (!userAddress) {
+					for (const chunkTokens of chunks) {
+						for (const token of chunkTokens) {
+							if (!data.current.balances[chainID]) {
+								data.current.balances[chainID] = {};
+							}
+							data.current.balances[chainID][token.address] = {
+								...data.current.balances[chainID][token.address],
+								balance: toNormalizedBN(0, token.decimals || 18),
+								chainID: chainID,
+								price: toNormalizedBN(0, 6),
+								value: 0
+							};
 						}
-						updated[chainID][address] = element;
-
-						if (!data.current.balances[chainID]) {
-							data.current.balances[chainID] = {};
-						}
-						data.current.balances[chainID][address] = {
-							...data.current.balances[chainID][address],
-							...element
-						};
+						data.current.nonce += 1;
 					}
-					data.current.nonce += 1;
+				} else {
+					for (const chunkTokens of chunks) {
+						const [newRawData, err] = await getBalances(chainID || 1, toAddress(userAddress), chunkTokens);
+						if (err) {
+							set_error(err as Error);
+						}
+						if (toAddress(userAddress) !== data?.current?.address) {
+							data.current = {
+								address: toAddress(userAddress),
+								balances: {},
+								nonce: 0
+							};
+						}
+						data.current.address = toAddress(userAddress);
+
+						for (const [address, element] of Object.entries(newRawData)) {
+							if (!updated[chainID]) {
+								updated[chainID] = {};
+							}
+							updated[chainID][address] = element;
+
+							if (!data.current.balances[chainID]) {
+								data.current.balances[chainID] = {};
+							}
+							data.current.balances[chainID][address] = {
+								...data.current.balances[chainID][address],
+								...element
+							};
+						}
+						data.current.nonce += 1;
+					}
 				}
 			}
 
@@ -391,9 +435,6 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** to fetch the balances, preventing the UI to freeze.
 	 **************************************************************************/
 	useAsyncTrigger(async (): Promise<void> => {
-		if (!userAddress) {
-			return;
-		}
 		set_status({
 			...defaultStatus,
 			isLoading: true,
@@ -417,13 +458,31 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 				chunks.push(tokens.slice(i, i + 100));
 			}
 			const allPromises = [];
-			for (const chunkTokens of chunks) {
-				allPromises.push(
-					getBalances(chainID, userAddress, chunkTokens).then(async ([newRawData, err]): Promise<void> => {
-						updateBalancesCall(chainID, newRawData);
-						set_error(err);
-					})
-				);
+			if (!userAddress) {
+				const chunckedTTokens: TDict<TToken> = {};
+				for (const chunkTokens of chunks) {
+					for (const token of chunkTokens) {
+						chunckedTTokens[token.address] = {
+							...data.current.balances[chainID][token.address],
+							balance: toNormalizedBN(0, token.decimals || 18),
+							chainID: chainID,
+							price: toNormalizedBN(0, 6),
+							value: 0
+						};
+					}
+					updateBalancesCall(chainID, chunckedTTokens);
+				}
+			} else {
+				for (const chunkTokens of chunks) {
+					allPromises.push(
+						getBalances(chainID, userAddress, chunkTokens).then(
+							async ([newRawData, err]): Promise<void> => {
+								updateBalancesCall(chainID, newRawData);
+								set_error(err);
+							}
+						)
+					);
+				}
 			}
 			await Promise.all(allPromises);
 		}
