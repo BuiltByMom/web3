@@ -205,7 +205,7 @@ export const WithTokenList = ({
 	/************************************************************************************
 	 ** This will return the token list for the current network.
 	 ************************************************************************************/
-	const currentNetworkList = useMemo(
+	const currentNetworkList: TDict<TToken> = useMemo(
 		() => aggregatedTokenList?.[safeChainID] || {},
 		[aggregatedTokenList, safeChainID]
 	);
