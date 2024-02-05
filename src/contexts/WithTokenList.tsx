@@ -1,19 +1,19 @@
 'use client';
 
 import {createContext, useCallback, useContext, useMemo, useState} from 'react';
+import {isAddressEqual} from 'viem';
 import axios from 'axios';
 import {useLocalStorageValue} from '@react-hookz/web';
 
 import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
 import {useChainID} from '../hooks/useChainID';
-import {toNormalizedBN} from '../utils/format';
+import {zeroNormalizedBN} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
 
 import type {AxiosResponse} from 'axios';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
 import type {TAddress} from '../types/address';
 import type {TDict, TNDict, TToken, TTokenList} from '../types/mixed';
-import {isAddressEqual} from 'viem';
 
 export type TTokenListProps = {
 	tokenLists: TNDict<TDict<TToken>>;
@@ -89,8 +89,8 @@ export const WithTokenList = ({
 					chainID: eachToken.chainId,
 					logoURI: eachToken.logoURI,
 					value: 0,
-					price: toNormalizedBN(0),
-					balance: toNormalizedBN(0)
+					price: zeroNormalizedBN,
+					balance: zeroNormalizedBN
 				};
 			}
 		}
@@ -125,8 +125,8 @@ export const WithTokenList = ({
 							chainID: eachToken.chainID ?? eachToken.chainId,
 							logoURI: eachToken.logoURI,
 							value: 0,
-							price: toNormalizedBN(0),
-							balance: toNormalizedBN(0)
+							price: zeroNormalizedBN,
+							balance: zeroNormalizedBN
 						};
 					}
 				}
@@ -158,8 +158,8 @@ export const WithTokenList = ({
 						chainID: eachToken.chainID ?? eachToken.chainId,
 						logoURI: eachToken.logoURI,
 						value: 0,
-						price: toNormalizedBN(0),
-						balance: toNormalizedBN(0)
+						price: zeroNormalizedBN,
+						balance: zeroNormalizedBN
 					};
 				}
 			}
@@ -249,20 +249,21 @@ export const WithTokenList = ({
 	/************************************************************************************
 	 ** This will add a token to the tokenListCustom.
 	 ************************************************************************************/
-	const addCustomToken = useCallback((token: TToken) => {
-		const extraTokensArray: Omit<TToken, 'balance' | 'price'>[] = extraTokens ?? [];
-		const {balance, price, ...restTokenProps} = token;
+	const addCustomToken = useCallback(
+		(token: TToken) => {
+			const extraTokensArray: Omit<TToken, 'balance' | 'price'>[] = extraTokens ?? [];
 
-		if (
-			!extraTokensArray.some(
-				customToken =>
-					isAddressEqual(customToken.address, restTokenProps.address) &&
-					customToken.chainID === restTokenProps.chainID
-			)
-		) {
-			set_extraTokens([...extraTokensArray, restTokenProps]);
-		}
-	}, []);
+			if (
+				!extraTokensArray.some(
+					customToken =>
+						isAddressEqual(customToken.address, token.address) && customToken.chainID === token.chainID
+				)
+			) {
+				set_extraTokens([...extraTokensArray, token]);
+			}
+		},
+		[extraTokens, set_extraTokens]
+	);
 
 	const contextValue = useMemo(
 		(): TTokenListProps => ({

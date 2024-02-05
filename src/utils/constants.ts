@@ -1,6 +1,6 @@
 import {zeroAddress} from 'viem';
 
-import {toNormalizedBN} from './format';
+import {zeroNormalizedBN} from './format';
 import {toAddress} from './tools.address';
 
 import type {TToken} from '../types';
@@ -30,6 +30,6 @@ export const DEFAULT_ERC20: TToken = {
 	decimals: 18,
 	chainID: 1,
 	value: 0,
-	price: toNormalizedBN(0),
-	balance: toNormalizedBN(0)
+	price: zeroNormalizedBN,
+	balance: zeroNormalizedBN
 };

@@ -62,13 +62,14 @@ export const toNormalizedAmount = (v: bigint, d?: number): string => {
 	return formatAmount(toNormalizedValue(v, d ?? 18), 6, 6);
 };
 
-export function toNormalizedBN(value: TNumberish, decimals?: number): TNormalizedBN {
+export function toNormalizedBN(value: TNumberish, decimals: number): TNormalizedBN {
 	return {
 		raw: toBigInt(value),
 		normalized: Number(formatUnits(toBigInt(value), decimals ?? 18)),
 		display: formatUnits(toBigInt(value), decimals ?? 18)
 	};
 }
+export const zeroNormalizedBN: TNormalizedBN = toNormalizedBN(0, 18);
 
 export function fromNormalized(value: number | string, decimals = 18): bigint {
 	return vParseUnits(eToNumber(String(value)), decimals);

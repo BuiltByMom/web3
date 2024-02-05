@@ -7,7 +7,7 @@ import {useWeb3} from '../contexts/useWeb3';
 import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
 import {useBalances} from '../hooks/useBalances.multichains';
 import {useChainID} from '../hooks/useChainID';
-import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, toNormalizedBN} from '../utils';
+import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, zeroNormalizedBN} from '../utils';
 import {getNetwork} from '../utils/wagmi/utils';
 import {useTokenList} from './WithTokenList';
 
@@ -27,7 +27,7 @@ type TWalletContext = {
 
 const defaultProps = {
 	getToken: (): TToken => DEFAULT_ERC20,
-	getBalance: (): TNormalizedBN => toNormalizedBN(0),
+	getBalance: (): TNormalizedBN => zeroNormalizedBN,
 	balances: {},
 	isLoading: true,
 	onRefresh: async (): Promise<TChainTokens> => ({}),
@@ -159,7 +159,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	 **************************************************************************/
 	const getBalance = useCallback(
 		({address, chainID}: TTokenAndChain): TNormalizedBN =>
-			balances?.[chainID || 1]?.[address]?.balance || toNormalizedBN(0),
+			balances?.[chainID || 1]?.[address]?.balance || zeroNormalizedBN,
 		[balances]
 	);
 
