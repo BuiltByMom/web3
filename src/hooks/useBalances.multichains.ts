@@ -149,7 +149,13 @@ async function getBalances(
 	}
 
 	try {
-		const [callResult] = await performCall(chainID, calls, tokens, prices, Boolean(ownerAddress));
+		const [callResult] = await performCall(
+			chainID,
+			calls,
+			tokens,
+			prices,
+			Boolean(ownerAddress) && !isZeroAddress(ownerAddress)
+		);
 		result = {...result, ...callResult};
 		return [result, undefined];
 	} catch (_error) {
