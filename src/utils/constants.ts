@@ -1,5 +1,3 @@
-import {zeroAddress} from 'viem';
-
 import {zeroNormalizedBN} from './format';
 import {toAddress} from './tools.address';
 
@@ -24,7 +22,7 @@ export const BIG_ZERO = 0n;
 export const MAX_UINT_256 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn;
 
 export const DEFAULT_ERC20: TToken = {
-	address: zeroAddress,
+	address: ZERO_ADDRESS,
 	name: '',
 	symbol: '',
 	decimals: 18,
