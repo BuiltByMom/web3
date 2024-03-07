@@ -24,13 +24,13 @@ export async function toWagmiProvider(connector: Connector | undefined): Promise
 		throw new Error('Connector is not set');
 	}
 
-	// const signer = await connector.getWalletClient(retrieveConfig());
+	const config = retrieveConfig();
 	const chainId = await connector.getChainId();
-	if (connector.getClient) {
-		const account = await connector.getClient({chainId});
-		const address = account.account?.address;
+	const signer = config.getClient();
+	if (signer) {
+		const address = signer.account?.address;
 		return {
-			walletClient: account,
+			walletClient: signer,
 			chainId,
 			address: toAddress(address)
 		};
