@@ -1,6 +1,6 @@
 import {toast} from 'react-hot-toast';
 import {BaseError} from 'viem';
-import {simulateContract, switchChain, waitForTransactionReceipt, writeContract} from '@wagmi/core';
+import {getConnectorClient, simulateContract, switchChain, waitForTransactionReceipt, writeContract} from '@wagmi/core';
 
 import {assert, assertAddress} from '../assert';
 import {toBigInt} from '../format';
@@ -24,11 +24,10 @@ export async function toWagmiProvider(connector: Connector | undefined): Promise
 		throw new Error('Connector is not set');
 	}
 
-	const config = retrieveConfig();
 	const chainId = await connector.getChainId();
-	const signer = config.getClient();
+	const [address] = await connector.getAccounts();
+	const signer = await getConnectorClient(retrieveConfig());
 	if (signer) {
-		const address = signer.account?.address;
 		return {
 			walletClient: signer,
 			chainId,
