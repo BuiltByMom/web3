@@ -1,7 +1,10 @@
 import {createStorage} from 'wagmi';
+import {safe} from 'wagmi/connectors';
 import {getDefaultConfig} from '@rainbow-me/rainbowkit';
-import {http, noopStorage} from '@wagmi/core';
+import {fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
+
+import {getNetwork} from './utils';
 
 import type {Transport} from 'viem';
 import type {Chain} from 'viem/chains';
@@ -24,7 +27,40 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
 		}),
 		transports: chains.reduce((acc: TTransport, chain) => {
-			acc[chain.id] = http();
+			let wsURI = getNetwork(chain.id)?.defaultRPC;
+			if (wsURI.startsWith('nd-')) {
+				wsURI = wsURI.replace('nd-', 'ws-nd-');
+			}
+			if (wsURI.startsWith('infura.io')) {
+				wsURI = wsURI.replace('v3', 'ws/v3');
+			}
+			if (wsURI.startsWith('chainstack.com')) {
+				wsURI = 'ws' + wsURI;
+			}
+			const availableTransports: Transport[] = [];
+			if (getNetwork(chain.id)?.defaultRPC) {
+				availableTransports.push(http(getNetwork(chain.id)?.defaultRPC));
+			}
+			if (getNetwork(chain.id)?.rpcUrls['alchemy'].http[0] && process.env.ALCHEMY_KEY) {
+				availableTransports.push(
+					http(`${getNetwork(chain.id)?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`)
+				);
+			}
+			if (getNetwork(chain.id)?.rpcUrls['infura'].http[0] && process.env.INFURA_PROJECT_ID) {
+				availableTransports.push(
+					http(`${getNetwork(chain.id)?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`)
+				);
+			}
+			if (wsURI) {
+				availableTransports.push(webSocket(wsURI));
+			}
+
+			acc[chain.id] = fallback([
+				unstable_connector(safe),
+				unstable_connector(injected),
+				...availableTransports,
+				http()
+			]);
 			return acc;
 		}, {})
 	});

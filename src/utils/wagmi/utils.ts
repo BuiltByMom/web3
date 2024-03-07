@@ -119,6 +119,40 @@ const isChain = (chain: wagmiChains.Chain | any): chain is wagmiChains.Chain => 
 	return chain.id !== undefined;
 };
 
+function getAlchemyBaseURL(chainID: number): string {
+	switch (chainID) {
+		case 1:
+			return 'https://eth-mainnet.g.alchemy.com/v2';
+		case 10:
+			return 'https://opt-mainnet.g.alchemy.com/v2';
+		case 137:
+			return 'https://polygon-mainnet.g.alchemy.com/v2';
+		case 8453:
+			return 'https://base-mainnet.g.alchemy.com/v2';
+		case 42161:
+			return 'https://arb-mainnet.g.alchemy.com/v2';
+	}
+	return '';
+}
+
+function getInfuraBaseURL(chainID: number): string {
+	switch (chainID) {
+		case 1:
+			return 'https://mainnet.infura.io/v3';
+		case 10:
+			return 'https://optimism-mainnet.infura.io/v3';
+		case 137:
+			return 'https://polygon-mainnet.infura.io/v3';
+		case 42161:
+			return 'https://arbitrum-mainnet.infura.io/v3';
+		case 42220:
+			return 'https://celo-mainnet.infura.io/v3';
+		case 59144:
+			return 'https://linea-mainnet.infura.io/v3';
+	}
+	return '';
+}
+
 function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 	const _indexedWagmiChains: TNDict<TExtendedChain> = {};
 	for (const chain of Object.values(wagmiChains)) {
@@ -134,6 +168,8 @@ function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 			};
 			extendedChain.defaultRPC =
 				process.env.JSON_RPC_URL?.[extendedChain.id] || extendedChain?.rpcUrls?.public?.http?.[0] || '';
+			extendedChain.rpcUrls['alchemy'] = {http: [getAlchemyBaseURL(extendedChain.id)]};
+			extendedChain.rpcUrls['infura'] = {http: [getInfuraBaseURL(extendedChain.id)]};
 			extendedChain.defaultBlockExplorer =
 				extendedChain.blockExplorers?.etherscan?.url ||
 				extendedChain.blockExplorers?.default.url ||
