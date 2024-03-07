@@ -1,4 +1,3 @@
-import {zeroNormalizedBN} from './format';
 import {toAddress} from './tools.address';
 
 import type {TToken} from '../types';
@@ -28,6 +27,6 @@ export const DEFAULT_ERC20: TToken = {
 	decimals: 18,
 	chainID: 1,
 	value: 0,
-	price: zeroNormalizedBN,
-	balance: zeroNormalizedBN
+	price: {raw: 0n, normalized: 0, display: '0'},
+	balance: {raw: 0n, normalized: 0, display: '0'}
 };
