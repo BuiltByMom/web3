@@ -1,23 +1,19 @@
 import {useMemo} from 'react';
-import {useConnect} from 'wagmi';
 
-import type {Chain} from '@wagmi/chains';
+import {retrieveConfig} from '../utils/wagmi';
+
+import type {Chain} from 'viem/chains';
 
 /******************************************************************************
  ** The useSupportedChains hook returns an array of supported chains, based on
  ** the injected connector.
  *****************************************************************************/
 export function useSupportedChains(): Chain[] {
-	const {connectors} = useConnect();
-
 	const supportedChains = useMemo((): Chain[] => {
-		const injectedConnector = connectors.find((e): boolean => e.id.toLocaleLowerCase() === 'injected');
-		if (!injectedConnector) {
-			return [];
-		}
-		const noFork = injectedConnector.chains.filter(({id}): boolean => id !== 1337);
+		const config = retrieveConfig();
+		const noFork = config.chains.filter(({id}): boolean => id !== 1337);
 		return noFork;
-	}, [connectors]);
+	}, []);
 
 	return supportedChains;
 }

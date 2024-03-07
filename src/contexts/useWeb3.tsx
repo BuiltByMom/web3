@@ -4,21 +4,19 @@ import {
 	useConnect,
 	useDisconnect,
 	useEnsName,
-	useNetwork,
 	usePublicClient,
-	useSwitchNetwork,
+	useSwitchChain,
 	useWalletClient
 } from 'wagmi';
 import * as _RainbowKitProvider from '@rainbow-me/rainbowkit';
 import {useIsMounted, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 
-import {assert} from '../utils/assert';
 import {isIframe} from '../utils/helpers';
 import {toAddress} from '../utils/tools.address';
+import {retrieveConfig} from '../utils/wagmi';
 
 import type {ReactElement} from 'react';
 import type {Connector} from 'wagmi';
-import type {Chain} from '@wagmi/core';
 import type {TAddress} from '../types/address';
 
 const {useConnectModal} = _RainbowKitProvider;
@@ -61,24 +59,22 @@ const defaultState: TWeb3Context = {
 
 const Web3Context = createContext<TWeb3Context>(defaultState);
 export const Web3ContextApp = ({children}: {children: ReactElement}): ReactElement => {
-	const {address, isConnecting, isConnected, isDisconnected, connector} = useAccount();
+	const {address, isConnecting, isConnected, isDisconnected, connector, chain} = useAccount();
 	const {connectors, connectAsync} = useConnect();
 	const {disconnect} = useDisconnect();
-	const {switchNetwork} = useSwitchNetwork();
+	const {switchChain} = useSwitchChain();
 	const {data: ensName} = useEnsName({address: address, chainId: 1});
 	const {data: walletClient} = useWalletClient();
-	const {chain} = useNetwork();
 	const [currentChainID, set_currentChainID] = useState(chain?.id);
 	const publicClient = usePublicClient();
 	const isMounted = useIsMounted();
 	const {openConnectModal} = useConnectModal();
 
 	const supportedChainsID = useMemo((): number[] => {
-		const injectedConnector = connectors.find((e): boolean => e.id.toLocaleLowerCase() === 'injected');
-		assert(injectedConnector, 'No injected connector found');
-		const chainsForInjected = injectedConnector.chains;
-		const noTestnet = chainsForInjected.filter(({id}): boolean => id !== 1337);
-		return noTestnet.map((network: Chain): number => network.id);
+		connectors; //Hard trigger re-render when connectors change
+		const config = retrieveConfig();
+		const noFork = config.chains.filter(({id}): boolean => id !== 1337);
+		return noFork.map(({id}): number => id);
 	}, [connectors]);
 
 	useUpdateEffect((): void => {
@@ -117,13 +113,13 @@ export const Web3ContextApp = ({children}: {children: ReactElement}): ReactEleme
 		(newChainID: number): void => {
 			set_currentChainID(newChainID);
 			if (isConnected) {
-				if (!switchNetwork) {
+				if (!switchChain || !connector) {
 					throw new Error('Switch network function is not defined');
 				}
-				switchNetwork?.(newChainID);
+				switchChain?.({connector, chainId: newChainID});
 			}
 		},
-		[switchNetwork, isConnected]
+		[switchChain, connector, isConnected]
 	);
 
 	const openLoginModal = useCallback(async (): Promise<void> => {

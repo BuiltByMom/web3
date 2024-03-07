@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {erc20ABI, useChainId} from 'wagmi';
+import {erc20Abi} from 'viem';
+import {useChainId} from 'wagmi';
 import {deserialize, multicall, serialize} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
@@ -9,10 +10,11 @@ import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '../utils/decoder';
 import {toBigInt, toNormalizedValue} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
 import {isEthAddress, isZero, isZeroAddress} from '../utils/tools.is';
+import {retrieveConfig} from '../utils/wagmi';
 import {getNetwork} from '../utils/wagmi/utils';
 
 import type {DependencyList} from 'react';
-import type {ContractFunctionConfig} from 'viem';
+import type {MulticallParameters} from 'viem';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types/address';
 import type {TBalanceData, TDefaultStatus, TDict, TNDict} from '../types/mixed';
@@ -65,12 +67,12 @@ const defaultStatus = {
 
 async function performCall(
 	chainID: number,
-	calls: ContractFunctionConfig[],
+	calls: MulticallParameters['contracts'][],
 	tokens: TUseBalancesTokens[],
 	prices?: TPrices
 ): Promise<[TDict<TBalanceData>, Error | undefined]> {
 	const _data: TDict<TBalanceData> = {};
-	const results = await multicall({
+	const results = await multicall(retrieveConfig(), {
 		contracts: calls as never[],
 		chainId: chainID
 	});
@@ -112,7 +114,7 @@ async function getBalances(
 	prices?: TPrices
 ): Promise<[TDict<TBalanceData>, Error | undefined]> {
 	let result: TDict<TBalanceData> = {};
-	const calls: ContractFunctionConfig[] = [];
+	const calls: MulticallParameters['contracts'][] = [];
 
 	for (const element of tokens) {
 		const {token} = element;
@@ -129,26 +131,18 @@ async function getBalances(
 			};
 			const baseContract = {
 				address: nativeTokenWrapper.address,
-				abi: erc20ABI
+				abi: erc20Abi
 			};
-			calls.push({
-				...multicall3Contract,
-				functionName: 'getEthBalance',
-				args: [ownerAddress]
-			});
-			calls.push({...baseContract, functionName: 'decimals'});
-			calls.push({...baseContract, functionName: 'symbol'});
-			calls.push({...baseContract, functionName: 'name'});
+			calls.push({...multicall3Contract, functionName: 'getEthBalance', args: [ownerAddress]} as never);
+			calls.push({...baseContract, functionName: 'decimals'} as never);
+			calls.push({...baseContract, functionName: 'symbol'} as never);
+			calls.push({...baseContract, functionName: 'name'} as never);
 		} else {
-			const baseContract = {address: toAddress(token), abi: erc20ABI};
-			calls.push({
-				...baseContract,
-				functionName: 'balanceOf',
-				args: [ownerAddress]
-			});
-			calls.push({...baseContract, functionName: 'decimals'});
-			calls.push({...baseContract, functionName: 'symbol'});
-			calls.push({...baseContract, functionName: 'name'});
+			const baseContract = {address: toAddress(token), abi: erc20Abi};
+			calls.push({...baseContract, functionName: 'balanceOf', args: [ownerAddress]} as never);
+			calls.push({...baseContract, functionName: 'decimals'} as never);
+			calls.push({...baseContract, functionName: 'symbol'} as never);
+			calls.push({...baseContract, functionName: 'name'} as never);
 		}
 	}
 
@@ -222,7 +216,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 		if (!web3Address || !isActive) {
 			return {};
 		}
-		const tokenList = deserialize(stringifiedTokens) || [];
+		const tokenList = (deserialize(stringifiedTokens) || []) as TUseBalancesTokens[];
 		const tokens = tokenList.filter(({token}: TUseBalancesTokens): boolean => !isZeroAddress(token));
 		if (isZero(tokens.length)) {
 			return {};
@@ -428,10 +422,10 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			status: status.isError
 				? 'error'
 				: status.isLoading || status.isFetching
-				? 'loading'
-				: status.isSuccess
-				? 'success'
-				: 'unknown'
+					? 'loading'
+					: status.isSuccess
+						? 'success'
+						: 'unknown'
 		}),
 		[
 			error,

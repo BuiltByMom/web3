@@ -1,91 +1,41 @@
-import {createConfig, createStorage} from 'wagmi';
-import {alchemyProvider} from 'wagmi/providers/alchemy';
-import {infuraProvider} from 'wagmi/providers/infura';
-import {jsonRpcProvider} from 'wagmi/providers/jsonRpc';
-import {publicProvider} from 'wagmi/providers/public';
-import {connectorsForWallets, getDefaultWallets} from '@rainbow-me/rainbowkit';
-import {safeWallet} from '@rainbow-me/rainbowkit/wallets';
-import {noopStorage} from '@wagmi/core';
+import {createStorage} from 'wagmi';
+import {getDefaultConfig} from '@rainbow-me/rainbowkit';
+import {http, noopStorage} from '@wagmi/core';
+import {type Config} from '@wagmi/core';
 
-import {getNetwork} from '../wagmi/utils';
-import {IFrameEthereumConnector} from './ledgerConnector';
+import type {Transport} from 'viem';
+import type {Chain} from 'viem/chains';
+import type {_chains} from '@rainbow-me/rainbowkit/dist/config/getDefaultConfig';
 
-import type {FallbackTransport} from 'viem';
-import type {Chain, ChainProviderFn, Config, PublicClient, WebSocketPublicClient} from 'wagmi';
+let CONFIG: Config | undefined = undefined;
 
-export function getSupportedProviders<TChain extends Chain = Chain>(): ChainProviderFn<TChain>[] {
-	const supportedProviders = [
-		jsonRpcProvider({
-			rpc: (chain): {http: string; webSocket?: string} => {
-				if (!getNetwork(chain.id)) {
-					return {http: ''};
-				}
-
-				let wsURI = getNetwork(chain.id).defaultRPC;
-				if (wsURI.startsWith('nd-')) {
-					wsURI = wsURI.replace('nd-', 'ws-nd-');
-				}
-				if (wsURI.startsWith('infura.io')) {
-					wsURI = wsURI.replace('v3', 'ws/v3');
-				}
-				if (wsURI.startsWith('chainstack.com')) {
-					wsURI = 'ws' + wsURI;
-				}
-
-				return {
-					http: getNetwork(chain.id).defaultRPC,
-					webSocket: wsURI
-				};
-			}
-		}),
-		publicProvider()
-	];
-
-	if (process.env.ALCHEMY_KEY) {
-		supportedProviders.push(alchemyProvider({apiKey: process.env.ALCHEMY_KEY || ''}));
+type TTransport = {[key: number]: Transport};
+export function getConfig({chains}: {chains: Chain[]}): Config {
+	if (CONFIG) {
+		return CONFIG;
 	}
-	if (process.env.INFURA_PROJECT_ID) {
-		supportedProviders.push(infuraProvider({apiKey: process.env.INFURA_PROJECT_ID || ''}));
-	}
-	return supportedProviders as unknown as ChainProviderFn<TChain>[];
-}
-
-export function getConfig({
-	chains,
-	publicClient,
-	webSocketPublicClient
-}: {
-	chains: Chain[];
-	publicClient: ({chainId}: {chainId?: number | undefined}) => PublicClient<FallbackTransport>;
-	webSocketPublicClient: ({
-		chainId
-	}: {
-		chainId?: number | undefined;
-	}) => WebSocketPublicClient<FallbackTransport> | undefined;
-}): Config<PublicClient<FallbackTransport>, WebSocketPublicClient<FallbackTransport>> {
-	const {wallets: rainbowWallets} = getDefaultWallets({
+	const config = getDefaultConfig({
 		appName: (process.env.WALLETCONNECT_PROJECT_NAME as string) || '',
 		projectId: process.env.WALLETCONNECT_PROJECT_ID as string,
-		chains
-	});
-	const rainbowConnector = connectorsForWallets([
-		...rainbowWallets,
-		{
-			groupName: 'Others',
-			wallets: [safeWallet({chains})]
-		}
-	]);
-
-	const config = createConfig({
+		chains: chains as unknown as _chains,
+		ssr: true,
 		storage: createStorage({
 			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
 		}),
-		autoConnect: true,
-		publicClient,
-		webSocketPublicClient,
-		connectors: [...rainbowConnector(), new IFrameEthereumConnector({chains, options: {}})]
+		transports: chains.reduce((acc: TTransport, chain) => {
+			acc[chain.id] = http();
+			return acc;
+		}, {})
 	});
 
+	CONFIG = config;
 	return config;
+}
+
+export function retrieveConfig(): Config {
+	if (CONFIG) {
+		return CONFIG;
+	}
+	throw new Error('Config not set');
 }

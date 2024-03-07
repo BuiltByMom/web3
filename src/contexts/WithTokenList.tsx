@@ -34,6 +34,38 @@ const defaultProps: TTokenListProps = {
 	set_tokenList: (): void => undefined
 };
 
+/******************************************************************************
+ ** Helper function to convert a token from the TToken type to the token list
+ ** type.
+ ******************************************************************************/
+export function toTokenListToken(token: TToken): TTokenList['tokens'][0] {
+	return {
+		address: token.address,
+		chainId: token.chainID,
+		decimals: token.decimals,
+		logoURI: token.logoURI,
+		name: token.name,
+		symbol: token.symbol
+	};
+}
+
+/******************************************************************************
+ ** Helper function to convert a token from the token list to a TToken type
+ ******************************************************************************/
+export function toTToken(token: TTokenList['tokens'][0]): TToken {
+	return {
+		address: token.address,
+		chainID: token.chainId,
+		decimals: token.decimals,
+		logoURI: token.logoURI,
+		name: token.name,
+		symbol: token.symbol,
+		value: 0,
+		price: zeroNormalizedBN,
+		balance: zeroNormalizedBN
+	};
+}
+
 const TokenList = createContext<TTokenListProps>(defaultProps);
 type TTokenListProviderProps = {
 	children: ReactElement;
@@ -146,16 +178,16 @@ export const WithTokenList = ({
 		if ((extraTokens || []).length > 0) {
 			const tokenListTokens: TNDict<TDict<TToken>> = {};
 			for (const eachToken of extraTokens || []) {
-				if (!tokenListTokens[eachToken.chainID ?? eachToken.chainId]) {
-					tokenListTokens[eachToken.chainID ?? eachToken.chainId] = {};
+				if (!tokenListTokens[eachToken.chainId]) {
+					tokenListTokens[eachToken.chainId] = {};
 				}
-				if (!tokenListTokens[eachToken.chainID ?? eachToken.chainId][toAddress(eachToken.address)]) {
-					tokenListTokens[eachToken.chainID ?? eachToken.chainId][toAddress(eachToken.address)] = {
+				if (!tokenListTokens[eachToken.chainId][toAddress(eachToken.address)]) {
+					tokenListTokens[eachToken.chainId][toAddress(eachToken.address)] = {
 						address: eachToken.address,
 						name: eachToken.name,
 						symbol: eachToken.symbol,
 						decimals: eachToken.decimals,
-						chainID: eachToken.chainID ?? eachToken.chainId,
+						chainID: eachToken.chainId,
 						logoURI: eachToken.logoURI,
 						value: 0,
 						price: zeroNormalizedBN,
@@ -251,15 +283,9 @@ export const WithTokenList = ({
 	 ************************************************************************************/
 	const addCustomToken = useCallback(
 		(token: TToken) => {
-			const extraTokensArray: Omit<TToken, 'balance' | 'price'>[] = extraTokens ?? [];
-
-			if (
-				!extraTokensArray.some(
-					customToken =>
-						isAddressEqual(customToken.address, token.address) && customToken.chainID === token.chainID
-				)
-			) {
-				set_extraTokens([...extraTokensArray, token]);
+			const arr = extraTokens ?? [];
+			if (!arr.some(t => isAddressEqual(t.address, token.address) && t.chainId === token.chainID)) {
+				set_extraTokens([...arr, toTokenListToken(token)]);
 			}
 		},
 		[extraTokens, set_extraTokens]

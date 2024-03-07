@@ -1,15 +1,15 @@
 import {useMemo} from 'react';
-import {configureChains, WagmiConfig} from 'wagmi';
+import {WagmiProvider} from 'wagmi';
 import {RainbowKitProvider} from '@rainbow-me/rainbowkit';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
-import {getConfig, getSupportedProviders} from '../utils/wagmi/config';
+import {getConfig} from '../utils/wagmi/config';
 import {Web3ContextApp} from './useWeb3';
 import {WithTokenList} from './WithTokenList';
 
 import type {ReactElement} from 'react';
-import type {FallbackTransport} from 'viem';
-import type {Config, PublicClient, WebSocketPublicClient} from 'wagmi';
-import type {Chain} from '@wagmi/core';
+import type {Chain} from 'viem';
+import type {Config} from 'wagmi';
 
 type TWithMom = {
 	children: ReactElement;
@@ -17,22 +17,22 @@ type TWithMom = {
 	tokenLists?: string[];
 };
 
+const queryClient = new QueryClient();
 function WithMom({children, supportedChains, tokenLists}: TWithMom): ReactElement {
-	const config = useMemo((): Config<PublicClient<FallbackTransport>, WebSocketPublicClient<FallbackTransport>> => {
-		const {chains, publicClient, webSocketPublicClient} = configureChains(supportedChains, getSupportedProviders());
-		return getConfig({chains, publicClient, webSocketPublicClient});
-	}, [supportedChains]);
+	const config = useMemo((): Config => getConfig({chains: supportedChains}), [supportedChains]);
 
 	return (
-		<WagmiConfig config={config}>
-			<RainbowKitProvider chains={supportedChains}>
-				<Web3ContextApp>
-					<WithTokenList lists={tokenLists}>
-						<>{children}</>
-					</WithTokenList>
-				</Web3ContextApp>
-			</RainbowKitProvider>
-		</WagmiConfig>
+		<WagmiProvider config={config}>
+			<QueryClientProvider client={queryClient}>
+				<RainbowKitProvider>
+					<Web3ContextApp>
+						<WithTokenList lists={tokenLists}>
+							<>{children}</>
+						</WithTokenList>
+					</Web3ContextApp>
+				</RainbowKitProvider>
+			</QueryClientProvider>
+		</WagmiProvider>
 	);
 }
 

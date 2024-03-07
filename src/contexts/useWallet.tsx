@@ -9,7 +9,7 @@ import {useBalances} from '../hooks/useBalances.multichains';
 import {useChainID} from '../hooks/useChainID';
 import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, zeroNormalizedBN} from '../utils';
 import {getNetwork} from '../utils/wagmi/utils';
-import {useTokenList} from './WithTokenList';
+import {toTokenListToken, toTToken, useTokenList} from './WithTokenList';
 
 import type {ReactElement} from 'react';
 import type {TUseBalancesTokens} from '../hooks/useBalances.multichains';
@@ -96,7 +96,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 			if (tokenToUpdate && tokenToUpdate.length > 0) {
 				const updatedBalances = await onUpdateSome(tokenToUpdate);
 				if (shouldSaveInStorage) {
-					saveExtraTokens([...(extraTokens || []), ...tokenToUpdate]);
+					saveExtraTokens([...(extraTokens || []), ...tokenToUpdate.map(t => toTokenListToken(t as TToken))]);
 				}
 				return updatedBalances;
 			}
@@ -142,7 +142,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 	 **************************************************************************/
 	useAsyncTrigger(async (): Promise<void> => {
 		if (extraTokens && !isZeroAddress(address)) {
-			await onUpdateSome(extraTokens);
+			await onUpdateSome(extraTokens.map(t => toTToken(t)));
 		}
 	}, [address, extraTokens, onUpdateSome]);
 

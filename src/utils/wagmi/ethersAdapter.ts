@@ -1,11 +1,12 @@
 import {providers} from 'ethers';
-import {type HttpTransport} from 'viem';
-import {getPublicClient, getWalletClient, type PublicClient, type WalletClient} from '@wagmi/core';
+import {type Config, getClient} from '@wagmi/core';
 
-export function publicClientToProvider(
-	publicClient: PublicClient
+import type {Chain, Client, Transport} from 'viem';
+
+export function clientToProvider(
+	client: Client<Transport, Chain>
 ): providers.JsonRpcProvider | providers.FallbackProvider {
-	const {chain, transport} = publicClient;
+	const {chain, transport} = client;
 	const network = {
 		chainId: chain.id,
 		name: chain.name,
@@ -13,8 +14,8 @@ export function publicClientToProvider(
 	};
 	if (transport.type === 'fallback') {
 		return new providers.FallbackProvider(
-			(transport.transports as ReturnType<HttpTransport>[]).map(
-				({value}): providers.JsonRpcProvider => new providers.JsonRpcProvider(value?.url, network)
+			(transport.transports as ReturnType<Transport>[]).map(
+				({value}) => new providers.JsonRpcProvider(value?.url, network)
 			)
 		);
 	}
@@ -22,32 +23,10 @@ export function publicClientToProvider(
 }
 
 /** Action to convert a viem Public Client to an ethers.js Provider. */
-export function getEthersProvider({chainId}: {chainId?: number} = {}):
-	| providers.JsonRpcProvider
-	| providers.FallbackProvider {
-	const publicClient = getPublicClient({chainId});
-	return publicClientToProvider(publicClient);
-}
-
-export function walletClientToSigner(walletClient: WalletClient): providers.JsonRpcSigner {
-	const {account, chain, transport} = walletClient;
-	const network = {
-		chainId: chain.id,
-		name: chain.name,
-		ensAddress: chain.contracts?.ensRegistry?.address
-	};
-	const provider = new providers.Web3Provider(transport, network);
-	const signer = provider.getSigner(account.address);
-	return signer;
-}
-
-/** Action to convert a viem Wallet Client to an ethers.js Signer. */
-export async function getEthersSigner({chainId}: {chainId?: number} = {}): Promise<
-	providers.JsonRpcSigner | undefined
-> {
-	const walletClient = await getWalletClient({chainId});
-	if (!walletClient) {
-		return undefined;
-	}
-	return walletClientToSigner(walletClient);
+export function getEthersProvider(
+	config: Config,
+	{chainId}: {chainId?: number} = {}
+): providers.JsonRpcProvider | providers.FallbackProvider {
+	const client = getClient(config, {chainId});
+	return clientToProvider(client as Client<Transport, Chain>);
 }

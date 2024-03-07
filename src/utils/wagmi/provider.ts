@@ -1,33 +1,41 @@
 import {toast} from 'react-hot-toast';
 import {BaseError} from 'viem';
-import {prepareWriteContract, switchNetwork, waitForTransaction, writeContract} from '@wagmi/core';
+import {simulateContract, switchChain, waitForTransactionReceipt, writeContract} from '@wagmi/core';
 
 import {assert, assertAddress} from '../assert';
 import {toBigInt} from '../format';
+import {toAddress} from '../tools.address';
+import {retrieveConfig} from './config';
 import {defaultTxStatus} from './transaction';
 
-import type {Abi, SimulateContractParameters} from 'viem';
+import type {Client, SimulateContractParameters, WalletClient} from 'viem';
 import type {Connector} from 'wagmi';
-import type {GetWalletClientResult, WalletClient} from '@wagmi/core';
 import type {TAddress} from '../../types/address';
 import type {TTxResponse} from './transaction';
 
 export type TWagmiProviderContract = {
-	walletClient: GetWalletClientResult;
+	walletClient: Client;
 	chainId: number;
 	address: TAddress;
 };
 export async function toWagmiProvider(connector: Connector | undefined): Promise<TWagmiProviderContract> {
 	assert(connector, 'Connector is not set');
+	if (!connector) {
+		throw new Error('Connector is not set');
+	}
 
-	const signer = await connector.getWalletClient();
+	// const signer = await connector.getWalletClient(retrieveConfig());
 	const chainId = await connector.getChainId();
-	const {address} = signer.account;
-	return {
-		walletClient: signer,
-		chainId,
-		address
-	};
+	if (connector.getClient) {
+		const account = await connector.getClient({chainId});
+		const address = account.account?.address;
+		return {
+			walletClient: account,
+			chainId,
+			address: toAddress(address)
+		};
+	}
+	throw new Error('Connector does not have a getClient method');
 }
 
 export type TWriteTransaction = {
@@ -40,19 +48,14 @@ export type TWriteTransaction = {
 	shouldDisplayErrorToast?: boolean;
 };
 
-type TPrepareWriteContractConfig<
-	TAbi extends Abi | readonly unknown[] = Abi,
-	TFunctionName extends string = string
-> = Omit<SimulateContractParameters<TAbi, TFunctionName>, 'chain' | 'address'> & {
+type TPrepareWriteContractConfig = SimulateContractParameters & {
 	chainId?: number;
 	walletClient?: WalletClient;
 	address: TAddress | undefined;
 	confirmation?: number;
 };
-export async function handleTx<TAbi extends Abi | readonly unknown[], TFunctionName extends string>(
-	args: TWriteTransaction,
-	props: TPrepareWriteContractConfig<TAbi, TFunctionName>
-): Promise<TTxResponse> {
+export async function handleTx(args: TWriteTransaction, props: TPrepareWriteContractConfig): Promise<TTxResponse> {
+	const config = retrieveConfig();
 	args.statusHandler?.({...defaultTxStatus, pending: true});
 	let wagmiProvider = await toWagmiProvider(args.connector);
 
@@ -68,7 +71,7 @@ export async function handleTx<TAbi extends Abi | readonly unknown[], TFunctionN
 	 ******************************************************************************************/
 	if (wagmiProvider.chainId !== args.chainID) {
 		try {
-			await switchNetwork({chainId: args.chainID});
+			await switchChain(config, {chainId: args.chainID});
 		} catch (error) {
 			if (!(error instanceof BaseError)) {
 				return {isSuccessful: false, error};
@@ -88,18 +91,19 @@ export async function handleTx<TAbi extends Abi | readonly unknown[], TFunctionN
 	assertAddress(wagmiProvider.address, 'userAddress');
 	assert(wagmiProvider.chainId === args.chainID, 'ChainID mismatch');
 	try {
-		const config = await prepareWriteContract({
+		const simulateContractConfig = await simulateContract(config, {
 			...wagmiProvider,
-			...(props as TPrepareWriteContractConfig),
+			...(props as SimulateContractParameters),
 			address: props.address,
 			value: toBigInt(props.value)
 		});
-		const {hash} = await writeContract(config.request);
-		const receipt = await waitForTransaction({
+		const hash = await writeContract(config, simulateContractConfig.request);
+		const receipt = await waitForTransactionReceipt(config, {
 			chainId: wagmiProvider.chainId,
 			hash,
 			confirmations: props.confirmation || 2
 		});
+
 		if (receipt.status === 'success') {
 			args.statusHandler?.({...defaultTxStatus, success: true});
 		} else if (receipt.status === 'reverted') {

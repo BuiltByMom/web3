@@ -1,9 +1,8 @@
-import type {Chain} from 'wagmi';
+import type {Chain} from 'viem';
 
 export const localhost = {
 	id: 1337,
 	name: 'Localhost',
-	network: 'localhost',
 	nativeCurrency: {
 		decimals: 18,
 		name: 'Ether',

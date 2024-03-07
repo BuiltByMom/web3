@@ -1,7 +1,8 @@
 import {useCallback, useMemo, useRef, useState} from 'react';
-import {erc20ABI} from 'wagmi';
+import {erc20Abi} from 'viem';
 import {useDeepCompareMemo} from '@react-hookz/web';
 import {deserialize, multicall, serialize} from '@wagmi/core';
+import {type MulticallParameters} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
 import {AGGREGATE3_ABI} from '../utils/abi/aggregate.abi';
@@ -10,11 +11,11 @@ import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '../utils/decoder';
 import {toBigInt, toNormalizedBN, toNormalizedValue} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
 import {isEthAddress, isZero, isZeroAddress} from '../utils/tools.is';
+import {retrieveConfig} from '../utils/wagmi';
 import {getNetwork} from '../utils/wagmi/utils';
 import {useAsyncTrigger} from './useAsyncTrigger';
 
 import type {DependencyList} from 'react';
-import type {ContractFunctionConfig} from 'viem';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types/address';
 import type {TChainTokens, TDefaultStatus, TDict, TNDict, TToken} from '../types/mixed';
@@ -67,13 +68,13 @@ const defaultStatus = {
 
 async function performCall(
 	chainID: number,
-	calls: ContractFunctionConfig[],
+	calls: MulticallParameters['contracts'][],
 	tokens: TUseBalancesTokens[],
 	prices?: TPricesChain,
 	hasOwnerAddress = true
 ): Promise<[TDict<TToken>, Error | undefined]> {
 	const _data: TDict<TToken> = {};
-	const results = await multicall({
+	const results = await multicall(retrieveConfig(), {
 		contracts: calls as never[],
 		chainId: chainID
 	});
@@ -118,33 +119,33 @@ async function getBalances(
 	prices?: TPricesChain
 ): Promise<[TDict<TToken>, Error | undefined]> {
 	let result: TDict<TToken> = {};
-	const calls: ContractFunctionConfig[] = [];
+	const calls: MulticallParameters['contracts'][] = [];
 	const ownerAddress = address;
 
 	for (const element of tokens) {
 		const {address: token} = element;
 		if (isEthAddress(token)) {
-			const nativeTokenWrapper = getNetwork(chainID)?.contracts?.wrappedToken;
-			if (!nativeTokenWrapper) {
+			const nativeTokenWrapper = toAddress(getNetwork(chainID)?.contracts?.wrappedToken?.address);
+			if (isZeroAddress(nativeTokenWrapper)) {
 				console.error('No native token wrapper found for chainID', chainID);
 				continue;
 			}
 			const multicall3Contract = {address: MULTICALL3_ADDRESS, abi: AGGREGATE3_ABI};
-			const baseContract = {address: nativeTokenWrapper.address, abi: erc20ABI};
+			const baseContract = {address: nativeTokenWrapper, abi: erc20Abi};
 			if (ownerAddress) {
-				calls.push({...multicall3Contract, functionName: 'getEthBalance', args: [ownerAddress]});
+				calls.push({...multicall3Contract, functionName: 'getEthBalance', args: [ownerAddress]} as never);
 			}
-			calls.push({...baseContract, functionName: 'decimals'});
-			calls.push({...baseContract, functionName: 'symbol'});
-			calls.push({...baseContract, functionName: 'name'});
+			calls.push({...baseContract, functionName: 'decimals'} as never);
+			calls.push({...baseContract, functionName: 'symbol'} as never);
+			calls.push({...baseContract, functionName: 'name'} as never);
 		} else {
-			const baseContract = {address: token, abi: erc20ABI};
+			const baseContract = {address: token, abi: erc20Abi};
 			if (ownerAddress) {
-				calls.push({...baseContract, functionName: 'balanceOf', args: [ownerAddress]});
+				calls.push({...baseContract, functionName: 'balanceOf', args: [ownerAddress]} as never);
 			}
-			calls.push({...baseContract, functionName: 'decimals'});
-			calls.push({...baseContract, functionName: 'symbol'});
-			calls.push({...baseContract, functionName: 'name'});
+			calls.push({...baseContract, functionName: 'decimals'} as never);
+			calls.push({...baseContract, functionName: 'symbol'} as never);
+			calls.push({...baseContract, functionName: 'name'} as never);
 		}
 	}
 
@@ -218,7 +219,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** send in a worker.
 	 **************************************************************************/
 	const onUpdate = useCallback(async (): Promise<TChainTokens> => {
-		const tokenList = deserialize(stringifiedTokens) || [];
+		const tokenList = (deserialize(stringifiedTokens) || []) as TUseBalancesTokens[];
 		const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
 		if (isZero(tokens.length)) {
 			return {};
@@ -452,10 +453,10 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			status: status.isError
 				? 'error'
 				: status.isLoading || status.isFetching
-				? 'loading'
-				: status.isSuccess
-				? 'success'
-				: 'unknown'
+					? 'loading'
+					: status.isSuccess
+						? 'success'
+						: 'unknown'
 		}),
 		[
 			assignPrices,
