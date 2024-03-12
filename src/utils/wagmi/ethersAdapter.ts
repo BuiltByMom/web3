@@ -1,7 +1,7 @@
 import {useMemo} from 'react';
 import {providers} from 'ethers';
 import {useConnectorClient} from 'wagmi';
-import {type Config, getClient} from '@wagmi/core';
+import {type Config, getClient, getConnectorClient} from '@wagmi/core';
 
 import type {Account, Chain, Client, Transport} from 'viem';
 
@@ -43,6 +43,14 @@ export function clientToSigner(client: Client<Transport, Chain, Account>): provi
 	const provider = new providers.Web3Provider(transport, network);
 	const signer = provider.getSigner(account.address);
 	return signer;
+}
+
+export async function getEthersSigner(
+	config: Config,
+	{chainId}: {chainId?: number} = {}
+): Promise<providers.JsonRpcSigner> {
+	const client = await getConnectorClient(config, {chainId});
+	return clientToSigner(client);
 }
 
 /** Hook to convert a Viem Client to an ethers.js Signer. */
