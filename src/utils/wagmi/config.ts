@@ -1,6 +1,7 @@
 import {createStorage} from 'wagmi';
+import {safe} from 'wagmi/connectors';
 import {getDefaultConfig} from '@rainbow-me/rainbowkit';
-import {fallback, http, noopStorage, webSocket} from '@wagmi/core';
+import {fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
 import {getNetwork} from './utils';
@@ -55,8 +56,8 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			}
 
 			acc[chain.id] = fallback([
-				// unstable_connector(safe),
-				// unstable_connector(injected),
+				unstable_connector(safe),
+				unstable_connector(injected),
 				http(),
 				...availableTransports
 			]);
