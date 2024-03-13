@@ -1,6 +1,7 @@
 import {createStorage} from 'wagmi';
 import {safe} from 'wagmi/connectors';
 import {getDefaultConfig} from '@rainbow-me/rainbowkit';
+import {frameWallet, injectedWallet, safeWallet} from '@rainbow-me/rainbowkit/wallets';
 import {fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
@@ -22,6 +23,12 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		projectId: process.env.WALLETCONNECT_PROJECT_ID as string,
 		chains: chains as unknown as _chains,
 		ssr: true,
+		wallets: [
+			{
+				groupName: 'Featured',
+				wallets: [injectedWallet, frameWallet, safeWallet]
+			}
+		],
 		storage: createStorage({
 			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
