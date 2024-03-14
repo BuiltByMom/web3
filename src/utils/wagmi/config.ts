@@ -1,7 +1,15 @@
 import {createStorage} from 'wagmi';
 import {safe} from 'wagmi/connectors';
 import {getDefaultConfig} from '@rainbow-me/rainbowkit';
-import {frameWallet, injectedWallet, safeWallet} from '@rainbow-me/rainbowkit/wallets';
+import {
+	coinbaseWallet,
+	frameWallet,
+	injectedWallet,
+	metaMaskWallet,
+	rainbowWallet,
+	safeWallet,
+	walletConnectWallet
+} from '@rainbow-me/rainbowkit/wallets';
 import {fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
@@ -25,8 +33,16 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		ssr: true,
 		wallets: [
 			{
-				groupName: 'Featured',
-				wallets: [injectedWallet, frameWallet, safeWallet]
+				groupName: 'Popular',
+				wallets: [
+					injectedWallet,
+					frameWallet,
+					metaMaskWallet,
+					walletConnectWallet,
+					rainbowWallet,
+					coinbaseWallet,
+					safeWallet
+				]
 			}
 		],
 		storage: createStorage({
