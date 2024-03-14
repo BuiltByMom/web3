@@ -65,8 +65,8 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			acc[chain.id] = fallback([
 				unstable_connector(safe),
 				unstable_connector(injected),
-				http(),
-				...availableTransports
+				...availableTransports,
+				http()
 			]);
 			return acc;
 		}, {})
