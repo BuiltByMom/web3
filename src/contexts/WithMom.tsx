@@ -17,8 +17,8 @@ type TWithMom = {
 	tokenLists?: string[];
 };
 
-const queryClient = new QueryClient();
 function WithMom({children, supportedChains, tokenLists}: TWithMom): ReactElement {
+	const queryClient = useMemo(() => new QueryClient(), []);
 	const config = useMemo((): Config => getConfig({chains: supportedChains}), [supportedChains]);
 
 	return (
