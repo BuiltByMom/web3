@@ -42,7 +42,7 @@ const WalletContext = createContext<TWalletContext>(defaultProps);
 export const WalletContextApp = memo(function WalletContextApp({children}: {children: ReactElement}): ReactElement {
 	const {currentNetworkTokenList} = useTokenList();
 	const {address} = useWeb3();
-	const {safeChainID} = useChainID();
+	const {chainID, safeChainID} = useChainID();
 	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens', {
 		defaultValue: []
 	});
@@ -63,6 +63,15 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 				name: token.name,
 				symbol: token.symbol
 			});
+			if (chainID === 1337) {
+				tokens.push({
+					address: toAddress(token.address),
+					chainID: 1337,
+					decimals: Number(token.decimals),
+					name: token.name,
+					symbol: token.symbol
+				});
+			}
 		});
 
 		const {wrappedToken} = getNetwork(safeChainID).contracts;
@@ -74,9 +83,18 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 				name: wrappedToken.coinName,
 				symbol: wrappedToken.coinSymbol
 			});
+			if (chainID === 1337) {
+				tokens.push({
+					address: toAddress(ETH_TOKEN_ADDRESS),
+					chainID: 1337,
+					decimals: wrappedToken.decimals,
+					name: wrappedToken.coinName,
+					symbol: wrappedToken.coinSymbol
+				});
+			}
 		}
 		return tokens;
-	}, [safeChainID, currentNetworkTokenList]);
+	}, [currentNetworkTokenList, safeChainID, chainID]);
 
 	/**************************************************************************
 	 ** This hook triggers the fetching of the balances of the available tokens
