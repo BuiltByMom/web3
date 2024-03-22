@@ -61,7 +61,6 @@ export function toTToken(token: TTokenList['tokens'][0]): TToken {
 		name: token.name,
 		symbol: token.symbol,
 		value: 0,
-		price: zeroNormalizedBN,
 		balance: zeroNormalizedBN
 	};
 }
@@ -121,7 +120,6 @@ export const WithTokenList = ({
 					chainID: eachToken.chainId,
 					logoURI: eachToken.logoURI,
 					value: 0,
-					price: zeroNormalizedBN,
 					balance: zeroNormalizedBN
 				};
 			}
@@ -157,7 +155,6 @@ export const WithTokenList = ({
 							chainID: eachToken.chainID ?? eachToken.chainId,
 							logoURI: eachToken.logoURI,
 							value: 0,
-							price: zeroNormalizedBN,
 							balance: zeroNormalizedBN
 						};
 					}
@@ -190,7 +187,6 @@ export const WithTokenList = ({
 						chainID: eachToken.chainId,
 						logoURI: eachToken.logoURI,
 						value: 0,
-						price: zeroNormalizedBN,
 						balance: zeroNormalizedBN
 					};
 				}
