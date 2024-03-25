@@ -84,15 +84,6 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 				name: wrappedToken.coinName,
 				symbol: wrappedToken.coinSymbol
 			});
-			if (chainID === 1337) {
-				tokens.push({
-					address: toAddress(ETH_TOKEN_ADDRESS),
-					chainID: 1337,
-					decimals: wrappedToken.decimals,
-					name: wrappedToken.coinName,
-					symbol: wrappedToken.coinSymbol
-				});
-			}
 		}
 
 		const config = retrieveConfig();

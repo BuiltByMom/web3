@@ -6,7 +6,7 @@ import {type MulticallParameters} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
 import {AGGREGATE3_ABI} from '../utils/abi/aggregate.abi';
-import {MULTICALL3_ADDRESS} from '../utils/constants';
+import {ETH_TOKEN_ADDRESS, MULTICALL3_ADDRESS} from '../utils/constants';
 import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '../utils/decoder';
 import {toNormalizedBN} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
@@ -96,9 +96,13 @@ async function performCall(
 	}
 
 	for (const {call, result} of callAndResult) {
-		const element = tokensAsObject[toAddress(call.address)];
+		let element = tokensAsObject[toAddress(call.address)];
 		if (!element) {
-			continue;
+			if (call.functionName === 'getEthBalance') {
+				element = tokensAsObject[toAddress(ETH_TOKEN_ADDRESS)];
+			} else {
+				continue;
+			}
 		}
 
 		/******************************************************************************************
@@ -161,6 +165,9 @@ async function performCall(
 		} else if (call.functionName === 'balanceOf' && hasOwnerAddress) {
 			const balanceOf = decodeAsBigInt(result);
 			_data[toAddress(address)].balance = toNormalizedBN(balanceOf, decimals);
+		} else if (call.functionName === 'getEthBalance' && hasOwnerAddress) {
+			const balanceOf = decodeAsBigInt(result);
+			_data[toAddress(address)].balance = toNormalizedBN(balanceOf, decimals);
 		}
 
 		/******************************************************************************************
@@ -199,7 +206,6 @@ async function getBalances(
 		if (isEthAddress(token)) {
 			const nativeTokenWrapper = toAddress(getNetwork(chainID)?.contracts?.wrappedToken?.address);
 			if (isZeroAddress(nativeTokenWrapper)) {
-				console.error('No native token wrapper found for chainID', chainID);
 				continue;
 			}
 			const multicall3Contract = {address: MULTICALL3_ADDRESS, abi: AGGREGATE3_ABI};
