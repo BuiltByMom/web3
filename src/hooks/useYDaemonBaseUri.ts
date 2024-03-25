@@ -3,8 +3,10 @@ type TProps = {
 	baseURI?: string;
 };
 
+const defaultYDaemonUri = 'https://ydaemon.yearn.fi';
+
 export function useYDaemonBaseURI(props?: TProps): {yDaemonBaseUri: string} {
-	const yDaemonBaseUri = props?.baseURI || process.env.YDAEMON_BASE_URI;
+	const yDaemonBaseUri = props?.baseURI || defaultYDaemonUri;
 
 	if (!yDaemonBaseUri) {
 		throw new Error('YDAEMON_BASE_URI is not defined');
