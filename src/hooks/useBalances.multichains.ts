@@ -111,9 +111,9 @@ async function performCall(
 				address: address,
 				name: injectedName || '',
 				symbol: injectedSymbol || '',
-				decimals: injectedDecimals || 18,
+				decimals: injectedDecimals || 0,
 				chainID: chainID,
-				balance: toNormalizedBN(0n, injectedDecimals || 18),
+				balance: toNormalizedBN(0n, injectedDecimals || 0),
 				value: 0
 			};
 		}
