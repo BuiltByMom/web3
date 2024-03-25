@@ -8,6 +8,7 @@ import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
 import {useBalances} from '../hooks/useBalances.multichains';
 import {useChainID} from '../hooks/useChainID';
 import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, zeroNormalizedBN} from '../utils';
+import {retrieveConfig} from '../utils/wagmi';
 import {getNetwork} from '../utils/wagmi/utils';
 import {toTokenListToken, toTToken, useTokenList} from './WithTokenList';
 
@@ -92,6 +93,17 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 					symbol: wrappedToken.coinSymbol
 				});
 			}
+		}
+
+		const config = retrieveConfig();
+		for (const chain of config.chains) {
+			tokens.push({
+				address: toAddress(ETH_TOKEN_ADDRESS),
+				chainID: chain.id,
+				decimals: chain.nativeCurrency.decimals,
+				name: chain.nativeCurrency.name,
+				symbol: chain.nativeCurrency.symbol
+			});
 		}
 		return tokens;
 	}, [currentNetworkTokenList, safeChainID, chainID]);
