@@ -9,7 +9,6 @@ import {useBalances} from '../hooks/useBalances.multichains';
 import {useChainID} from '../hooks/useChainID';
 import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, zeroNormalizedBN} from '../utils';
 import {retrieveConfig} from '../utils/wagmi';
-import {getNetwork} from '../utils/wagmi/utils';
 import {toTokenListToken, toTToken, useTokenList} from './WithTokenList';
 
 import type {ReactElement} from 'react';
@@ -40,10 +39,16 @@ const defaultProps = {
  ** interact with our app, aka mostly the balances and the token prices.
  ******************************************************************************/
 const WalletContext = createContext<TWalletContext>(defaultProps);
-export const WalletContextApp = memo(function WalletContextApp({children}: {children: ReactElement}): ReactElement {
+export const WalletContextApp = memo(function WalletContextApp({
+	children,
+	shouldWorkOnTestnet
+}: {
+	children: ReactElement;
+	shouldWorkOnTestnet?: boolean;
+}): ReactElement {
 	const {currentNetworkTokenList} = useTokenList();
 	const {address} = useWeb3();
-	const {chainID, safeChainID} = useChainID();
+	const {chainID} = useChainID();
 	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens', {
 		defaultValue: []
 	});
@@ -75,19 +80,14 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 			}
 		});
 
-		const {wrappedToken} = getNetwork(safeChainID).contracts;
-		if (wrappedToken) {
-			tokens.push({
-				address: toAddress(ETH_TOKEN_ADDRESS),
-				chainID: safeChainID,
-				decimals: wrappedToken.decimals,
-				name: wrappedToken.coinName,
-				symbol: wrappedToken.coinSymbol
-			});
-		}
-
 		const config = retrieveConfig();
 		for (const chain of config.chains) {
+			if (chain.testnet && !shouldWorkOnTestnet) {
+				continue;
+			}
+			if (chain.id === 1337 && !shouldWorkOnTestnet) {
+				continue;
+			}
 			tokens.push({
 				address: toAddress(ETH_TOKEN_ADDRESS),
 				chainID: chain.id,
@@ -97,7 +97,7 @@ export const WalletContextApp = memo(function WalletContextApp({children}: {chil
 			});
 		}
 		return tokens;
-	}, [currentNetworkTokenList, safeChainID, chainID]);
+	}, [currentNetworkTokenList, chainID, shouldWorkOnTestnet]);
 
 	/**************************************************************************
 	 ** This hook triggers the fetching of the balances of the available tokens
