@@ -22,7 +22,7 @@ export const usePrices = ({
 	const {yDaemonBaseUri: yDaemonBaseUriWithoutChain} = useYDaemonBaseURI();
 
 	const addressesString = tokens.map(token => token?.address).join(',');
-	const url = `${yDaemonBaseUriWithoutChain}/${chainId}/prices/some/${addressesString}`;
+	const url = tokens.length ? `${yDaemonBaseUriWithoutChain}/${chainId}/prices/some/${addressesString}` : null;
 	const {data: rawData, isLoading, isSuccess} = useFetch<TResponse>({endpoint: url, schema: yDaemonPricesSchema});
 
 	const data = rawData
