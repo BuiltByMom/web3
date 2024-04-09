@@ -67,7 +67,7 @@ const defaultStatus = {
 	isRefetching: false
 };
 
-async function performCall(
+export async function performCall(
 	chainID: number,
 	chunckCalls: MulticallParameters['contracts'],
 	tokens: TUseBalancesTokens[],
@@ -178,7 +178,7 @@ async function performCall(
 	return [_data, undefined];
 }
 
-async function getBalances(
+export async function getBalances(
 	chainID: number,
 	address: TAddress | undefined,
 	tokens: TUseBalancesTokens[]

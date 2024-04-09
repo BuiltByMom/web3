@@ -1,30 +1,24 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {erc20Abi} from 'viem';
+import {useCallback, useMemo, useRef, useState} from 'react';
 import {useChainId} from 'wagmi';
-import {deserialize, multicall, serialize} from '@wagmi/core';
+import {deserialize, serialize} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
-import {AGGREGATE3_ABI} from '../utils/abi/aggregate.abi';
-import {MULTICALL3_ADDRESS} from '../utils/constants';
-import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '../utils/decoder';
-import {toBigInt, toNormalizedValue} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
-import {isEthAddress, isZero, isZeroAddress} from '../utils/tools.is';
-import {retrieveConfig} from '../utils/wagmi';
-import {getNetwork} from '../utils/wagmi/utils';
+import {isZero, isZeroAddress} from '../utils/tools.is';
+import {useAsyncTrigger} from './useAsyncTrigger';
+import {getBalances} from './useBalances.multichains';
 
 import type {DependencyList} from 'react';
-import type {MulticallParameters} from 'viem';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types/address';
-import type {TBalanceData, TDefaultStatus, TDict, TNDict} from '../types/mixed';
-import type {TPrices} from '../types/prices';
+import type {TChainTokens, TDefaultStatus, TDict, TNDict, TToken} from '../types/mixed';
 
 /*******************************************************************************
  ** Request, Response and helpers for the useBalances hook.
  ******************************************************************************/
 export type TUseBalancesTokens = {
-	token: string;
+	address: TAddress;
+	chainID: number;
 	decimals?: number;
 	name?: string;
 	symbol?: string;
@@ -33,15 +27,13 @@ export type TUseBalancesTokens = {
 export type TUseBalancesReq = {
 	key?: string | number;
 	tokens: TUseBalancesTokens[];
-	prices?: TPrices;
 	effectDependencies?: DependencyList;
 	provider?: Connector;
 };
-
 export type TUseBalancesRes = {
-	data: TDict<TBalanceData>;
-	update: () => Promise<TDict<TBalanceData>>;
-	updateSome: (token: TUseBalancesTokens[]) => Promise<TDict<TBalanceData>>;
+	data: TChainTokens;
+	onUpdate: () => Promise<TChainTokens>;
+	onUpdateSome: (token: TUseBalancesTokens[]) => Promise<TChainTokens>;
 	error?: Error;
 	status: 'error' | 'loading' | 'success' | 'unknown';
 	nonce: number;
@@ -50,7 +42,7 @@ export type TUseBalancesRes = {
 type TDataRef = {
 	nonce: number;
 	address: TAddress;
-	balances: TDict<TBalanceData>;
+	balances: TChainTokens;
 };
 
 /*******************************************************************************
@@ -65,145 +57,52 @@ const defaultStatus = {
 	isRefetching: false
 };
 
-async function performCall(
-	chainID: number,
-	calls: MulticallParameters['contracts'][],
-	tokens: TUseBalancesTokens[],
-	prices?: TPrices
-): Promise<[TDict<TBalanceData>, Error | undefined]> {
-	const _data: TDict<TBalanceData> = {};
-	const results = await multicall(retrieveConfig(), {
-		contracts: calls as never[],
-		chainId: chainID
-	});
-
-	let rIndex = 0;
-	for (const element of tokens) {
-		const {token, decimals: injectedDecimals, name: injectedName, symbol: injectedSymbol} = element;
-		const balanceOf = decodeAsBigInt(results[rIndex++]);
-		const decimals = decodeAsNumber(results[rIndex++]) || injectedDecimals || 18;
-		const rawPrice = toBigInt(prices?.[toAddress(token)]);
-		let symbol = decodeAsString(results[rIndex++]) || injectedSymbol || '';
-		let name = decodeAsString(results[rIndex++]) || injectedName || '';
-		if (isEthAddress(token)) {
-			const nativeTokenWrapper = getNetwork(chainID)?.contracts?.wrappedToken;
-			if (nativeTokenWrapper) {
-				symbol = nativeTokenWrapper.coinSymbol;
-				name = nativeTokenWrapper.coinName;
-			}
-		}
-
-		_data[toAddress(token)] = {
-			decimals: decimals,
-			symbol: symbol,
-			name: name,
-			raw: balanceOf,
-			rawPrice,
-			normalized: toNormalizedValue(balanceOf, decimals),
-			normalizedPrice: toNormalizedValue(rawPrice, 6),
-			normalizedValue: toNormalizedValue(balanceOf, decimals) * toNormalizedValue(rawPrice, 6)
-		};
-	}
-	return [_data, undefined];
-}
-
-async function getBalances(
-	chainID: number,
-	address: TAddress,
-	tokens: TUseBalancesTokens[],
-	prices?: TPrices
-): Promise<[TDict<TBalanceData>, Error | undefined]> {
-	let result: TDict<TBalanceData> = {};
-	const calls: MulticallParameters['contracts'][] = [];
-
-	for (const element of tokens) {
-		const {token} = element;
-		const ownerAddress = address;
-		if (isEthAddress(token)) {
-			const nativeTokenWrapper = getNetwork(chainID)?.contracts?.wrappedToken;
-			if (!nativeTokenWrapper) {
-				console.error('No native token wrapper found for chainID', chainID);
-				continue;
-			}
-			const multicall3Contract = {
-				address: MULTICALL3_ADDRESS,
-				abi: AGGREGATE3_ABI
-			};
-			const baseContract = {
-				address: nativeTokenWrapper.address,
-				abi: erc20Abi
-			};
-			calls.push({...multicall3Contract, functionName: 'getEthBalance', args: [ownerAddress]} as never);
-			calls.push({...baseContract, functionName: 'decimals'} as never);
-			calls.push({...baseContract, functionName: 'symbol'} as never);
-			calls.push({...baseContract, functionName: 'name'} as never);
-		} else {
-			const baseContract = {address: toAddress(token), abi: erc20Abi};
-			calls.push({...baseContract, functionName: 'balanceOf', args: [ownerAddress]} as never);
-			calls.push({...baseContract, functionName: 'decimals'} as never);
-			calls.push({...baseContract, functionName: 'symbol'} as never);
-			calls.push({...baseContract, functionName: 'name'} as never);
-		}
-	}
-
-	try {
-		const [callResult] = await performCall(chainID, calls, tokens, prices);
-		result = {...result, ...callResult};
-		return [result, undefined];
-	} catch (_error) {
-		console.error(_error);
-		return [result, _error as Error];
-	}
-}
-
 /***************************************************************************
  ** This hook can be used to fetch balance information for any ERC20 tokens.
  **************************************************************************/
 export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
-	const {address: web3Address, isActive} = useWeb3();
+	const {address: userAddress} = useWeb3();
 	const chainID = useChainId();
-	const [nonce, set_nonce] = useState(0);
 	const [status, set_status] = useState<TDefaultStatus>(defaultStatus);
 	const [error, set_error] = useState<Error | undefined>(undefined);
-	const [balances, set_balances] = useState<TNDict<TDict<TBalanceData>>>({});
-	const data = useRef<TNDict<TDataRef>>({
-		1: {nonce: 0, address: toAddress(), balances: {}}
-	});
+	const [balances, set_balances] = useState<TChainTokens>({});
+	const data = useRef<TDataRef>({nonce: 0, address: toAddress(), balances: {}});
 	const stringifiedTokens = useMemo((): string => serialize(props?.tokens || []), [props?.tokens]);
 
 	const updateBalancesCall = useCallback(
-		(chainID: number, newRawData: TDict<TBalanceData>): TDict<TBalanceData> => {
-			if (toAddress(web3Address) !== data?.current?.[chainID]?.address) {
-				data.current[chainID] = {
-					address: toAddress(web3Address),
+		(currentUserAddress: TAddress, chainID: number, newRawData: TDict<TToken>): TChainTokens => {
+			if (toAddress(currentUserAddress) !== data?.current?.address) {
+				data.current = {
+					address: toAddress(currentUserAddress),
 					balances: {},
 					nonce: 0
 				};
 			}
-			data.current[chainID].address = toAddress(web3Address);
+			data.current.address = toAddress(currentUserAddress);
 
 			for (const [address, element] of Object.entries(newRawData)) {
-				element.raw = element.raw || 0n;
-				data.current[chainID].balances[address] = {
-					...data.current[chainID].balances[address],
+				if (!data.current.balances[chainID]) {
+					data.current.balances[chainID] = {};
+				}
+				data.current.balances[chainID][address] = {
+					...data.current.balances[chainID][address],
 					...element
 				};
 			}
-			data.current[chainID].nonce += 1;
+			data.current.nonce += 1;
 
 			set_balances(
-				(b): TNDict<TDict<TBalanceData>> => ({
+				(b): TChainTokens => ({
 					...b,
 					[chainID]: {
 						...(b[chainID] || {}),
-						...data.current[chainID].balances
+						...data.current.balances[chainID]
 					}
 				})
 			);
-			set_nonce((n): number => n + 1);
-			return data.current[chainID].balances;
+			return data.current.balances;
 		},
-		[web3Address]
+		[]
 	);
 
 	/***************************************************************************
@@ -212,12 +111,9 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** This takes the whole list and is not optimized for performance, aka not
 	 ** send in a worker.
 	 **************************************************************************/
-	const onUpdate = useCallback(async (): Promise<TDict<TBalanceData>> => {
-		if (!web3Address || !isActive) {
-			return {};
-		}
+	const onUpdate = useCallback(async (): Promise<TChainTokens> => {
 		const tokenList = (deserialize(stringifiedTokens) || []) as TUseBalancesTokens[];
-		const tokens = tokenList.filter(({token}: TUseBalancesTokens): boolean => !isZeroAddress(token));
+		const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
 		if (isZero(tokens.length)) {
 			return {};
 		}
@@ -233,45 +129,77 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			chunks.push(tokens.slice(i, i + 5_000));
 		}
 
-		for (const chunkTokens of chunks) {
-			const [newRawData, err] = await getBalances(chainID || 1, web3Address, chunkTokens);
-			if (toAddress(web3Address as string) !== data?.current?.[chainID]?.address) {
-				data.current[chainID] = {
-					address: toAddress(web3Address as string),
-					balances: {},
-					nonce: 0
-				};
+		const tokensPerChainID: TNDict<TUseBalancesTokens[]> = {};
+		const alreadyAdded: TNDict<TDict<boolean>> = {};
+		for (const token of tokens) {
+			if (token.chainID !== chainID) {
+				continue;
 			}
-			data.current[chainID].address = toAddress(web3Address as string);
+			if (!tokensPerChainID[chainID]) {
+				tokensPerChainID[chainID] = [];
+			}
+			if (!alreadyAdded[chainID]) {
+				alreadyAdded[chainID] = {};
+			}
+			if (alreadyAdded[chainID][toAddress(token.address)]) {
+				continue;
+			}
+			tokensPerChainID[chainID].push(token);
+			alreadyAdded[chainID][toAddress(token.address)] = true;
+		}
 
-			for (const [address, element] of Object.entries(newRawData)) {
-				data.current[chainID].balances[address] = {
-					...data.current[chainID].balances[address],
-					...element
-				};
+		const updated: TChainTokens = {};
+		for (const [, tokens] of Object.entries(tokensPerChainID)) {
+			const chunks = [];
+			for (let i = 0; i < tokens.length; i += 500) {
+				chunks.push(tokens.slice(i, i + 500));
 			}
-			data.current[chainID].nonce += 1;
+
+			for (const chunkTokens of chunks) {
+				const [newRawData, err] = await getBalances(chainID || 1, userAddress, chunkTokens);
+				if (err) {
+					set_error(err as Error);
+				}
+
+				if (toAddress(userAddress) !== data?.current?.address) {
+					data.current = {
+						address: toAddress(userAddress),
+						balances: {},
+						nonce: 0
+					};
+				}
+				data.current.address = toAddress(userAddress);
+				for (const [address, element] of Object.entries(newRawData)) {
+					if (!updated[chainID]) {
+						updated[chainID] = {};
+					}
+					updated[chainID][address] = element;
+
+					if (!data.current.balances[chainID]) {
+						data.current.balances[chainID] = {};
+					}
+					data.current.balances[chainID][address] = {
+						...data.current.balances[chainID][address],
+						...element
+					};
+				}
+				data.current.nonce += 1;
+			}
 
 			set_balances(
-				(b): TNDict<TDict<TBalanceData>> => ({
+				(b): TChainTokens => ({
 					...b,
 					[chainID]: {
 						...(b[chainID] || {}),
-						...data.current[chainID].balances
+						...data.current.balances[chainID]
 					}
 				})
 			);
-			set_nonce((n): number => n + 1);
-			set_error(err as Error);
-			set_status({
-				...defaultStatus,
-				isSuccess: true,
-				isFetched: true
-			});
+			set_status({...defaultStatus, isSuccess: true, isFetched: true});
 		}
 
-		return data.current[chainID].balances;
-	}, [isActive, stringifiedTokens, web3Address, chainID]);
+		return updated;
+	}, [stringifiedTokens, userAddress, chainID]);
 
 	/***************************************************************************
 	 ** onUpdateSome takes a list of tokens and fetches the balances for each
@@ -279,122 +207,88 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** issue as it should only be used for a little list of tokens.
 	 **************************************************************************/
 	const onUpdateSome = useCallback(
-		async (tokenList: TUseBalancesTokens[]): Promise<TDict<TBalanceData>> => {
+		async (tokenList: TUseBalancesTokens[]): Promise<TChainTokens> => {
 			set_status({
 				...defaultStatus,
 				isLoading: true,
 				isFetching: true,
 				isRefetching: defaultStatus.isFetched
 			});
-			const tokens = tokenList.filter(({token}: TUseBalancesTokens): boolean => !isZeroAddress(token));
-			const chunks = [];
-			for (let i = 0; i < tokens.length; i += 2_000) {
-				chunks.push(tokens.slice(i, i + 2_000));
+			const chains: number[] = [];
+			const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
+			const tokensPerChainID: TNDict<TUseBalancesTokens[]> = {};
+			const alreadyAdded: TNDict<TDict<boolean>> = {};
+
+			for (const token of tokens) {
+				if (token.chainID !== chainID) {
+					continue;
+				}
+				if (!tokensPerChainID[chainID]) {
+					tokensPerChainID[chainID] = [];
+				}
+				if (!alreadyAdded[chainID]) {
+					alreadyAdded[chainID] = {};
+				}
+				if (alreadyAdded[chainID][toAddress(token.address)]) {
+					continue;
+				}
+
+				tokensPerChainID[chainID].push(token);
+				alreadyAdded[chainID][toAddress(token.address)] = true;
+				if (!chains.includes(chainID)) {
+					chains.push(chainID);
+				}
 			}
 
-			const tokensAdded: TDict<TBalanceData> = {};
-			for (const chunkTokens of chunks) {
-				const [newRawData, err] = await getBalances(
-					chainID || 1,
-					toAddress(web3Address as string),
-					chunkTokens
-				);
-				if (toAddress(web3Address as string) !== data?.current?.[chainID]?.address) {
-					data.current[chainID] = {
-						address: toAddress(web3Address as string),
-						balances: {},
-						nonce: 0
-					};
+			const updated: TChainTokens = {};
+			for (const [, tokens] of Object.entries(tokensPerChainID)) {
+				const chunks = [];
+				for (let i = 0; i < tokens.length; i += 500) {
+					chunks.push(tokens.slice(i, i + 500));
 				}
-				data.current[chainID].address = toAddress(web3Address as string);
-
-				for (const [address, element] of Object.entries(newRawData)) {
-					tokensAdded[address] = element;
-					data.current[chainID].balances[address] = {
-						...data.current[chainID].balances[address],
-						...element
-					};
-				}
-				data.current[chainID].nonce += 1;
-
-				set_balances(
-					(b): TNDict<TDict<TBalanceData>> => ({
-						...b,
-						[chainID]: {
-							...(b[chainID] || {}),
-							...data.current[chainID].balances
-						}
-					})
-				);
-				set_nonce((n): number => n + 1);
-				set_error(err as Error);
-				set_status({
-					...defaultStatus,
-					isSuccess: true,
-					isFetched: true
-				});
-			}
-			return tokensAdded;
-		},
-		[web3Address, chainID]
-	);
-
-	const assignPrices = useCallback(
-		(_rawData: TNDict<TDict<TBalanceData>>): TNDict<TDict<TBalanceData>> => {
-			for (const chainIDStr of Object.keys(_rawData)) {
-				const chainID = Number(chainIDStr);
-				for (const address of Object.keys(_rawData[chainID])) {
-					const tokenAddress = toAddress(address);
-					const rawPrice = toBigInt(props?.prices?.[tokenAddress]);
-					if (!_rawData[chainID]) {
-						_rawData[chainID] = {};
+				for (const chunkTokens of chunks) {
+					const [newRawData, err] = await getBalances(chainID || 1, toAddress(userAddress), chunkTokens);
+					if (err) {
+						set_error(err as Error);
 					}
-					_rawData[chainID][tokenAddress] = {
-						..._rawData[chainID][tokenAddress],
-						rawPrice,
-						normalizedPrice: toNormalizedValue(rawPrice, 6),
-						normalizedValue:
-							(_rawData[chainID]?.[tokenAddress] || 0).normalized * toNormalizedValue(rawPrice, 6)
-					};
+					if (toAddress(userAddress) !== data?.current?.address) {
+						data.current = {
+							address: toAddress(userAddress),
+							balances: {},
+							nonce: 0
+						};
+					}
+					data.current.address = toAddress(userAddress);
+
+					for (const [address, element] of Object.entries(newRawData)) {
+						if (!updated[chainID]) {
+							updated[chainID] = {};
+						}
+						updated[chainID][address] = element;
+
+						if (!data.current.balances[chainID]) {
+							data.current.balances[chainID] = {};
+						}
+						data.current.balances[chainID][address] = {
+							...data.current.balances[chainID][address],
+							...element
+						};
+					}
+					data.current.nonce += 1;
 				}
 			}
-			return _rawData;
+
+			set_balances(previous => {
+				const updated = {...previous};
+				for (const [chainID, chainData] of Object.entries(data.current.balances)) {
+					updated[Number(chainID)] = {...updated[Number(chainID)], ...chainData};
+				}
+				return updated;
+			});
+			set_status({...defaultStatus, isSuccess: true, isFetched: true});
+			return updated;
 		},
-		[props?.prices]
-	);
-
-	const asyncUseEffect = useCallback(async (): Promise<void> => {
-		if (!isActive || !web3Address) {
-			return;
-		}
-		set_status({
-			...defaultStatus,
-			isLoading: true,
-			isFetching: true,
-			isRefetching: defaultStatus.isFetched
-		});
-
-		const tokens = JSON.parse(stringifiedTokens) as TUseBalancesTokens[];
-		const chunks = [];
-		for (let i = 0; i < tokens.length; i += 100) {
-			chunks.push(tokens.slice(i, i + 100));
-		}
-		const allPromises = [];
-		for (const chunkTokens of chunks) {
-			allPromises.push(
-				getBalances(chainID || 1, web3Address, chunkTokens).then(async ([newRawData, err]): Promise<void> => {
-					updateBalancesCall(chainID || 1, newRawData);
-					set_error(err);
-				})
-			);
-		}
-		await Promise.all(allPromises);
-		set_status({...defaultStatus, isSuccess: true, isFetched: true});
-	}, [stringifiedTokens, isActive, web3Address, chainID, updateBalancesCall]);
-
-	const withPrice = useMemo(
-		(): TDict<TBalanceData> => assignPrices(balances || {})?.[chainID] || {},
-		[assignPrices, balances, chainID]
+		[userAddress, chainID]
 	);
 
 	/***************************************************************************
@@ -402,16 +296,59 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** This is the main hook and is optimized for performance, using a worker
 	 ** to fetch the balances, preventing the UI to freeze.
 	 **************************************************************************/
-	useEffect((): void => {
-		asyncUseEffect();
-	}, [asyncUseEffect]);
+	useAsyncTrigger(async (): Promise<void> => {
+		set_status({
+			...defaultStatus,
+			isLoading: true,
+			isFetching: true,
+			isRefetching: defaultStatus.isFetched
+		});
+
+		const tokens = (JSON.parse(stringifiedTokens) || []) as TUseBalancesTokens[];
+		const tokensPerChainID: TNDict<TUseBalancesTokens[]> = {};
+		const alreadyAdded: TNDict<TDict<boolean>> = {};
+		for (const token of tokens) {
+			if (token.chainID !== chainID) {
+				continue;
+			}
+			if (!tokensPerChainID[chainID]) {
+				tokensPerChainID[chainID] = [];
+			}
+			if (!alreadyAdded[chainID]) {
+				alreadyAdded[chainID] = {};
+			}
+			if (alreadyAdded[chainID][toAddress(token.address)]) {
+				continue;
+			}
+			tokensPerChainID[chainID].push(token);
+			alreadyAdded[chainID][toAddress(token.address)] = true;
+		}
+
+		for (const [, tokens] of Object.entries(tokensPerChainID)) {
+			const chunks = [];
+			for (let i = 0; i < tokens.length; i += 500) {
+				chunks.push(tokens.slice(i, i + 500));
+			}
+			const allPromises = [];
+			for (const chunkTokens of chunks) {
+				allPromises.push(
+					getBalances(chainID, userAddress, chunkTokens).then(async ([newRawData, err]): Promise<void> => {
+						updateBalancesCall(toAddress(userAddress), chainID, newRawData);
+						set_error(err);
+					})
+				);
+			}
+			await Promise.all(allPromises);
+		}
+
+		set_status({...defaultStatus, isSuccess: true, isFetched: true});
+	}, [stringifiedTokens, userAddress, updateBalancesCall, chainID]);
 
 	const contextValue = useMemo(
 		(): TUseBalancesRes => ({
-			data: withPrice,
-			nonce,
-			update: onUpdate,
-			updateSome: onUpdateSome,
+			data: balances || {},
+			onUpdate: onUpdate,
+			onUpdateSome: onUpdateSome,
 			error,
 			isLoading: status.isLoading,
 			isFetching: status.isFetching,
@@ -419,6 +356,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			isError: status.isError,
 			isFetched: status.isFetched,
 			isRefetching: status.isRefetching,
+			nonce: data.current.nonce,
 			status: status.isError
 				? 'error'
 				: status.isLoading || status.isFetching
@@ -428,8 +366,8 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 						: 'unknown'
 		}),
 		[
+			balances,
 			error,
-			nonce,
 			onUpdate,
 			onUpdateSome,
 			status.isError,
@@ -437,8 +375,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			status.isFetching,
 			status.isLoading,
 			status.isRefetching,
-			status.isSuccess,
-			withPrice
+			status.isSuccess
 		]
 	);
 
