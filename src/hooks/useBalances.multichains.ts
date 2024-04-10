@@ -193,6 +193,7 @@ export async function getBalances(
 		const tokenUpdateInfo = TOKEN_UPDATE[`${chainID}/${toAddress(element.address)}`];
 		if (tokenUpdateInfo?.lastUpdate && Date.now() - tokenUpdateInfo?.lastUpdate < 60_000) {
 			if (toAddress(tokenUpdateInfo.owner) === toAddress(ownerAddress)) {
+				result[toAddress(token)] = tokenUpdateInfo;
 				continue;
 			}
 		}
