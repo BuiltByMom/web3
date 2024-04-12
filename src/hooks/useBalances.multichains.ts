@@ -199,7 +199,11 @@ export async function getBalances(
 		}
 
 		if (isEthAddress(token)) {
-			const multicall3Contract = {address: MULTICALL3_ADDRESS, abi: AGGREGATE3_ABI};
+			const network = getNetwork(chainID);
+			const multicall3Contract = {
+				address: network.contracts.multicall3?.address || MULTICALL3_ADDRESS,
+				abi: AGGREGATE3_ABI
+			};
 			const baseContract = {address: ETH_TOKEN_ADDRESS, abi: erc20Abi};
 			if (element.decimals === undefined || element.decimals === 0) {
 				calls.push({...baseContract, functionName: 'decimals'} as never);
