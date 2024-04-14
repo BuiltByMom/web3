@@ -313,8 +313,8 @@ export function formatAmount(
 	if (options?.locales) {
 		locales.push(...options.locales);
 	}
-	locales.push(locale);
 	locales.push('en-US');
+	locales.push(locale);
 	let formattedAmount = new Intl.NumberFormat(locales, {
 		minimumFractionDigits,
 		maximumFractionDigits
