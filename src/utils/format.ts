@@ -288,9 +288,12 @@ export function formatAmount(
 	amount: number | string,
 	minimumFractionDigits = 2,
 	maximumFractionDigits = 2,
-	displayDigits = 0
+	displayDigits = 0,
+	options?: {
+		locales?: string[];
+	}
 ): string {
-	let locale = 'fr-FR';
+	let locale = 'en-US';
 	if (typeof navigator !== 'undefined') {
 		locale = navigator.language || 'fr-FR';
 	}
@@ -306,7 +309,13 @@ export function formatAmount(
 	if (isNaN(amount)) {
 		amount = 0;
 	}
-	let formattedAmount = new Intl.NumberFormat([locale, 'en-US'], {
+	const locales = [];
+	if (options?.locales) {
+		locales.push(...options.locales);
+	}
+	locales.push(locale);
+	locales.push('en-US');
+	let formattedAmount = new Intl.NumberFormat(locales, {
 		minimumFractionDigits,
 		maximumFractionDigits
 	}).format(amount);
