@@ -329,6 +329,32 @@ export function formatAmount(
 	return formattedAmount;
 }
 
+export function parseAmount(stringNumber: string, providedLocales?: string[]): number {
+	let locale = 'en-US';
+	if (typeof navigator !== 'undefined') {
+		locale = navigator.language || 'fr-FR';
+	}
+	const locales = [];
+	if (providedLocales) {
+		locales.push(...providedLocales);
+	}
+	locales.push('en-US');
+	locales.push(locale);
+
+	const thousandSeparator = Intl.NumberFormat(locales)
+		.format(11111)
+		.replace(/\p{Number}/gu, '');
+	const decimalSeparator = Intl.NumberFormat(locales)
+		.format(1.1)
+		.replace(/\p{Number}/gu, '');
+
+	return parseFloat(
+		stringNumber
+			.replace(new RegExp('\\' + thousandSeparator, 'g'), '')
+			.replace(new RegExp('\\' + decimalSeparator), '.')
+	);
+}
+
 export function formatCurrency(amount: number, decimals = 2): string {
 	let locale = 'fr-FR';
 	if (typeof navigator !== 'undefined') {
