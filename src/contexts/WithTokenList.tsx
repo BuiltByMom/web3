@@ -77,7 +77,7 @@ export const WithTokenList = ({
 		'https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/tokenlistooor.json'
 	]
 }: TTokenListProviderProps): ReactElement => {
-	const {safeChainID} = useChainID();
+	const {chainID} = useChainID();
 	const {value: extraTokenlist} = useLocalStorageValue<string[]>('extraTokenlists');
 	const {value: extraTokens, set: set_extraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens');
 	const [tokenList, set_tokenList] = useState<TNDict<TDict<TToken>>>({});
@@ -123,6 +123,29 @@ export const WithTokenList = ({
 					balance: zeroNormalizedBN
 				};
 			}
+
+			/**************************************************************************************
+			 ** If we are in development mode, we also want to add the token to our list, but only
+			 ** if the token's chainID is 1 (Ethereum).
+			 *************************************************************************************/
+			if (
+				process.env.NODE_ENV === 'development' &&
+				Boolean(process.env.SHOULD_USE_FORKNET) &&
+				eachToken.chainId === 1
+			) {
+				if (!tokenListTokens[1337][toAddress(eachToken.address)]) {
+					tokenListTokens[1337][toAddress(eachToken.address)] = {
+						address: eachToken.address,
+						name: eachToken.name,
+						symbol: eachToken.symbol,
+						decimals: eachToken.decimals,
+						chainID: 1337,
+						logoURI: eachToken.logoURI,
+						value: 0,
+						balance: zeroNormalizedBN
+					};
+				}
+			}
 		}
 		set_tokenList(tokenListTokens);
 	}, [hashList]);
@@ -158,6 +181,29 @@ export const WithTokenList = ({
 							balance: zeroNormalizedBN
 						};
 					}
+
+					/**************************************************************************************
+					 ** If we are in development mode, we also want to add the token to our list, but only
+					 ** if the token's chainID is 1 (Ethereum).
+					 *************************************************************************************/
+					if (
+						process.env.NODE_ENV === 'development' &&
+						Boolean(process.env.SHOULD_USE_FORKNET) &&
+						eachToken.chainId === 1
+					) {
+						if (!tokenListTokens[1337][toAddress(eachToken.address)]) {
+							tokenListTokens[1337][toAddress(eachToken.address)] = {
+								address: eachToken.address,
+								name: eachToken.name,
+								symbol: eachToken.symbol,
+								decimals: eachToken.decimals,
+								chainID: 1337,
+								logoURI: eachToken.logoURI,
+								value: 0,
+								balance: zeroNormalizedBN
+							};
+						}
+					}
 				}
 			}
 		}
@@ -189,6 +235,28 @@ export const WithTokenList = ({
 						value: 0,
 						balance: zeroNormalizedBN
 					};
+				}
+				/**************************************************************************************
+				 ** If we are in development mode, we also want to add the token to our list, but only
+				 ** if the token's chainID is 1 (Ethereum).
+				 *************************************************************************************/
+				if (
+					process.env.NODE_ENV === 'development' &&
+					Boolean(process.env.SHOULD_USE_FORKNET) &&
+					eachToken.chainId === 1
+				) {
+					if (!tokenListTokens[1337][toAddress(eachToken.address)]) {
+						tokenListTokens[1337][toAddress(eachToken.address)] = {
+							address: eachToken.address,
+							name: eachToken.name,
+							symbol: eachToken.symbol,
+							decimals: eachToken.decimals,
+							chainID: 1337,
+							logoURI: eachToken.logoURI,
+							value: 0,
+							balance: zeroNormalizedBN
+						};
+					}
 				}
 			}
 			set_tokenListCustom(tokenListTokens);
@@ -234,8 +302,8 @@ export const WithTokenList = ({
 	 ** This will return the token list for the current network.
 	 ************************************************************************************/
 	const currentNetworkList: TDict<TToken> = useMemo(
-		() => aggregatedTokenList?.[safeChainID] || {},
-		[aggregatedTokenList, safeChainID]
+		() => aggregatedTokenList?.[chainID] || {},
+		[aggregatedTokenList, chainID]
 	);
 
 	/************************************************************************************
