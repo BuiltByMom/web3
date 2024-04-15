@@ -133,6 +133,9 @@ export const WithTokenList = ({
 				Boolean(process.env.SHOULD_USE_FORKNET) &&
 				eachToken.chainId === 1
 			) {
+				if (!tokenListTokens[1337]) {
+					tokenListTokens[1337] = {};
+				}
 				if (!tokenListTokens[1337][toAddress(eachToken.address)]) {
 					tokenListTokens[1337][toAddress(eachToken.address)] = {
 						address: eachToken.address,
@@ -189,8 +192,11 @@ export const WithTokenList = ({
 					if (
 						process.env.NODE_ENV === 'development' &&
 						Boolean(process.env.SHOULD_USE_FORKNET) &&
-						eachToken.chainId === 1
+						(eachToken.chainID ?? eachToken.chainId) === 1
 					) {
+						if (!tokenListTokens[1337]) {
+							tokenListTokens[1337] = {};
+						}
 						if (!tokenListTokens[1337][toAddress(eachToken.address)]) {
 							tokenListTokens[1337][toAddress(eachToken.address)] = {
 								address: eachToken.address,
@@ -245,6 +251,9 @@ export const WithTokenList = ({
 					Boolean(process.env.SHOULD_USE_FORKNET) &&
 					eachToken.chainId === 1
 				) {
+					if (!tokenListTokens[1337]) {
+						tokenListTokens[1337] = {};
+					}
 					if (!tokenListTokens[1337][toAddress(eachToken.address)]) {
 						tokenListTokens[1337][toAddress(eachToken.address)] = {
 							address: eachToken.address,
