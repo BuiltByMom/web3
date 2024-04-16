@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {erc20Abi} from 'viem';
 import {useDeepCompareMemo} from '@react-hookz/web';
 import {deserialize, multicall, serialize} from '@wagmi/core';
@@ -254,10 +254,28 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	const [balances, set_balances] = useState<TChainTokens>({});
 	const data = useRef<TDataRef>({nonce: 0, address: toAddress(), balances: {}});
 	const stringifiedTokens = useMemo((): string => serialize(props?.tokens || []), [props?.tokens]);
+	const currentlyConnectedAddress = useRef<TAddress | undefined>(undefined);
+
+	useEffect(() => {
+		if (toAddress(userAddress) !== toAddress(currentlyConnectedAddress.current)) {
+			currentlyConnectedAddress.current = toAddress(userAddress);
+			set_balances({});
+			data.current = {
+				address: toAddress(userAddress),
+				balances: {},
+				nonce: 0
+			};
+			set_status(defaultStatus);
+		}
+	}, [userAddress]);
 
 	const updateBalancesCall = useCallback(
 		(currentUserAddress: TAddress, chainID: number, newRawData: TDict<TToken>): TChainTokens => {
-			if (toAddress(currentUserAddress) !== data?.current?.address) {
+			if (currentlyConnectedAddress.current !== currentUserAddress) {
+				return {};
+			}
+
+			if (toAddress(currentUserAddress) !== toAddress(data?.current?.address)) {
 				data.current = {
 					address: toAddress(currentUserAddress),
 					balances: {},
@@ -277,15 +295,15 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			}
 			data.current.nonce += 1;
 
-			set_balances(
-				(b): TChainTokens => ({
+			set_balances((b): TChainTokens => {
+				return {
 					...b,
 					[chainID]: {
 						...(b[chainID] || {}),
 						...data.current.balances[chainID]
 					}
-				})
-			);
+				};
+			});
 			return data.current.balances;
 		},
 		[]

@@ -104,6 +104,7 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 		return await handleTx(props, {
 			address: toAddress(props.contractAddress),
 			abi: ALTERNATE_ERC20_APPROVE_ABI,
+			confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
 			functionName: 'approve',
 			args: [props.spenderAddress, props.amount]
 		});
@@ -112,6 +113,7 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 	return await handleTx(props, {
 		address: props.contractAddress,
 		abi: erc20Abi,
+		confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
 		functionName: 'approve',
 		args: [props.spenderAddress, props.amount]
 	});
@@ -135,6 +137,7 @@ export async function transferERC20(props: TTransferERC20): Promise<TTxResponse>
 	return await handleTx(props, {
 		address: toAddress(props.contractAddress),
 		abi: isAddressEqual(props.contractAddress, usdtAddress) ? (usdtAbi as Abi) : erc20Abi,
+		confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
 		functionName: 'transfer',
 		args: [props.receiverAddress, props.amount]
 	});
@@ -166,7 +169,11 @@ export async function transferEther(props: TTransferEther): Promise<TTxResponse>
 			to: props.receiverAddress,
 			value: props.amount
 		});
-		const receipt = await waitForTransactionReceipt(retrieveConfig(), {chainId: wagmiProvider.chainId, hash});
+		const receipt = await waitForTransactionReceipt(retrieveConfig(), {
+			chainId: wagmiProvider.chainId,
+			hash,
+			confirmations: process.env.NODE_ENV === 'development' ? 1 : undefined
+		});
 		if (receipt.status === 'success') {
 			props.statusHandler?.({...defaultTxStatus, success: true});
 		} else if (receipt.status === 'reverted') {
