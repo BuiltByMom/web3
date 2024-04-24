@@ -9,7 +9,7 @@ import {
 	WFTM_TOKEN_ADDRESS
 } from '../constants';
 import {toAddress} from '../tools.address';
-import {localhost} from './networks';
+import {localhost, anotherLocalhost} from './networks';
 
 import type {Chain, PublicClient} from 'viem';
 import type {TAddress} from '../../types/address';
@@ -160,6 +160,9 @@ function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 			let extendedChain = chain as unknown as TExtendedChain;
 			if (extendedChain.id === 1337) {
 				extendedChain = localhost as unknown as TExtendedChain;
+			}
+			if (extendedChain.id === 5402) {
+				extendedChain = anotherLocalhost as unknown as TExtendedChain;
 			}
 
 			extendedChain.contracts = {
