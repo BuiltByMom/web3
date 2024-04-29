@@ -46,7 +46,7 @@ export const WalletContextApp = memo(function WalletContextApp({
 	children: ReactElement;
 	shouldWorkOnTestnet?: boolean;
 }): ReactElement {
-	const {currentNetworkTokenList} = useTokenList();
+	const {tokenLists} = useTokenList();
 	const {address} = useWeb3();
 	const {chainID} = useChainID();
 	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens', {
@@ -59,26 +59,27 @@ export const WalletContextApp = memo(function WalletContextApp({
 	 ** network.
 	 **************************************************************************/
 	const availableTokens = useMemo((): TUseBalancesTokens[] => {
-		const withTokenList = [...Object.values(currentNetworkTokenList)];
 		const tokens: TUseBalancesTokens[] = [];
-		withTokenList.forEach((token): void => {
-			tokens.push({
-				address: toAddress(token.address),
-				chainID: token.chainID,
-				decimals: Number(token.decimals),
-				name: token.name,
-				symbol: token.symbol
-			});
-			if (chainID === 1337) {
+		for (const forChainID of Object.values(tokenLists)) {
+			for (const token of Object.values(forChainID)) {
 				tokens.push({
 					address: toAddress(token.address),
-					chainID: 1337,
+					chainID: token.chainID,
 					decimals: Number(token.decimals),
 					name: token.name,
 					symbol: token.symbol
 				});
+				if (chainID === 1337) {
+					tokens.push({
+						address: toAddress(token.address),
+						chainID: 1337,
+						decimals: Number(token.decimals),
+						name: token.name,
+						symbol: token.symbol
+					});
+				}
 			}
-		});
+		}
 
 		const config = retrieveConfig();
 		for (const chain of config.chains) {
@@ -97,7 +98,7 @@ export const WalletContextApp = memo(function WalletContextApp({
 			});
 		}
 		return tokens;
-	}, [currentNetworkTokenList, chainID, shouldWorkOnTestnet]);
+	}, [tokenLists, chainID, shouldWorkOnTestnet]);
 
 	/**************************************************************************
 	 ** This hook triggers the fetching of the balances of the available tokens
