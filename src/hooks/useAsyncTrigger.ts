@@ -15,4 +15,19 @@ function useAsyncTrigger(effect: () => Promise<void>, deps: DependencyList): () 
 	return asyncEffectInCallback;
 }
 
-export {useAsyncTrigger};
+function useAsyncTriggerWithArgs(effect: (args?: unknown) => Promise<void>, deps: DependencyList): () => Promise<void> {
+	const asyncEffectInCallback = useCallback(
+		async (...args: unknown[]): Promise<void> => {
+			effect(...args);
+		},
+		[effect, ...deps]
+	);
+
+	useEffect((): void => {
+		asyncEffectInCallback();
+	}, [asyncEffectInCallback]);
+
+	return asyncEffectInCallback;
+}
+
+export {useAsyncTrigger, useAsyncTriggerWithArgs};
