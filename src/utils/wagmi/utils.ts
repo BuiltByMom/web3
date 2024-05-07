@@ -205,17 +205,22 @@ export function getClient(chainID: number): PublicClient {
 		indexedWagmiChains?.[chainID]?.rpcUrls?.public?.http?.[0] ||
 		'';
 
-	const urlAsNodeURL = new URL(url);
-	let headers = {};
-	if (urlAsNodeURL.username && urlAsNodeURL.password) {
-		headers = {
-			Authorization: `Basic ${btoa(urlAsNodeURL.username + ':' + urlAsNodeURL.password)}`
-		};
-		url = urlAsNodeURL.href.replace(`${urlAsNodeURL.username}:${urlAsNodeURL.password}@`, '');
-		return createPublicClient({
-			chain: indexedWagmiChains[chainID],
-			transport: http(url, {fetchOptions: {headers}})
-		});
+	try {
+		new URL(url);
+		const urlAsNodeURL = new URL(url);
+		let headers = {};
+		if (urlAsNodeURL.username && urlAsNodeURL.password) {
+			headers = {
+				Authorization: `Basic ${btoa(urlAsNodeURL.username + ':' + urlAsNodeURL.password)}`
+			};
+			url = urlAsNodeURL.href.replace(`${urlAsNodeURL.username}:${urlAsNodeURL.password}@`, '');
+			return createPublicClient({
+				chain: indexedWagmiChains[chainID],
+				transport: http(url, {fetchOptions: {headers}})
+			});
+		}
+		return createPublicClient({chain: indexedWagmiChains[chainID], transport: http(url)});
+	} catch (e) {
+		throw new Error(`We couldn't get a valid RPC URL for chain ${chainID}`);
 	}
-	return createPublicClient({chain: indexedWagmiChains[chainID], transport: http(url)});
 }
