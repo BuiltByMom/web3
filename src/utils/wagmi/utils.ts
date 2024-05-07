@@ -14,6 +14,7 @@ import {localhost, anotherLocalhost} from './networks';
 import type {Chain, PublicClient} from 'viem';
 import type {TAddress} from '../../types/address';
 import type {TDict, TNDict} from '../../types/mixed';
+import {retrieveConfig} from './config';
 
 export type TChainContract = {
 	address: TAddress;
@@ -196,6 +197,13 @@ export function getClient(chainID: number): PublicClient {
 		throw new Error(`Chain ${chainID} is not supported`);
 	}
 	let url = process.env.JSON_RPC_URL?.[chainID] || indexedWagmiChains?.[chainID]?.rpcUrls?.public?.http?.[0] || '';
+	if (!url) {
+		const config = retrieveConfig();
+		if (config.chains[chainID]) {
+			url = config.chains[chainID].rpcUrls.default.http[0];
+		}
+	}
+
 	const urlAsNodeURL = new URL(url);
 	let headers = {};
 	if (urlAsNodeURL.username && urlAsNodeURL.password) {
