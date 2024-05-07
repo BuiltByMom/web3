@@ -196,13 +196,14 @@ export function getClient(chainID: number): PublicClient {
 	if (!indexedWagmiChains[chainID]) {
 		throw new Error(`Chain ${chainID} is not supported`);
 	}
-	let url = process.env.JSON_RPC_URL?.[chainID] || indexedWagmiChains?.[chainID]?.rpcUrls?.public?.http?.[0] || '';
-	if (!url) {
-		const config = retrieveConfig();
-		if (config.chains[chainID]) {
-			url = config.chains[chainID].rpcUrls.default.http[0];
-		}
-	}
+	const chainConfig = indexedWagmiChains?.[chainID] || retrieveConfig().chains.find(chain => chain.id === chainID);
+	let url =
+		process.env.JSON_RPC_URL?.[chainID] ||
+		chainConfig.rpcUrls.default.http[0] ||
+		chainConfig.rpcUrls.alchemy.http[0] ||
+		chainConfig.rpcUrls.infura.http[0] ||
+		indexedWagmiChains?.[chainID]?.rpcUrls?.public?.http?.[0] ||
+		'';
 
 	const urlAsNodeURL = new URL(url);
 	let headers = {};
