@@ -8,7 +8,7 @@ import {
 	useSwitchChain,
 	useWalletClient
 } from 'wagmi';
-import * as _RainbowKitProvider from '@rainbow-me/rainbowkit';
+import {useAccountModal, useChainModal, useConnectModal} from '@rainbow-me/rainbowkit';
 import {useIsMounted, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 
 import {isIframe} from '../utils/helpers';
@@ -18,8 +18,6 @@ import {retrieveConfig} from '../utils/wagmi';
 import type {ReactElement} from 'react';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types/address';
-
-const {useConnectModal} = _RainbowKitProvider;
 
 type TWeb3Context = {
 	address: TAddress | undefined;
@@ -68,7 +66,9 @@ export const Web3ContextApp = ({children}: {children: ReactElement}): ReactEleme
 	const [currentChainID, set_currentChainID] = useState(chain?.id);
 	const publicClient = usePublicClient();
 	const isMounted = useIsMounted();
+	const {openAccountModal} = useAccountModal();
 	const {openConnectModal} = useConnectModal();
+	const {openChainModal} = useChainModal();
 
 	const supportedChainsID = useMemo((): number[] => {
 		connectors; //Hard trigger re-render when connectors change
@@ -101,9 +101,13 @@ export const Web3ContextApp = ({children}: {children: ReactElement}): ReactEleme
 		if (openConnectModal) {
 			openConnectModal();
 		} else {
+			if (openChainModal) {
+				openChainModal();
+				return;
+			}
 			console.warn('Impossible to open login modal');
 		}
-	}, [connectAsync, connectors, currentChainID, openConnectModal]);
+	}, [connectAsync, connectors, currentChainID, openChainModal, openConnectModal]);
 
 	const onDesactivate = useCallback((): void => {
 		disconnect();
@@ -123,18 +127,44 @@ export const Web3ContextApp = ({children}: {children: ReactElement}): ReactEleme
 	);
 
 	const openLoginModal = useCallback(async (): Promise<void> => {
-		const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
-		if (isIframe() && ledgerConnector) {
-			await connectAsync({connector: ledgerConnector, chainId: currentChainID});
-			return;
-		}
-
-		if (openConnectModal) {
-			openConnectModal();
+		if (isConnected && connector && address) {
+			if (openAccountModal) {
+				openAccountModal();
+			} else {
+				if (openChainModal) {
+					openChainModal();
+					return;
+				}
+				console.warn('Impossible to open account modal');
+			}
 		} else {
-			console.warn('Impossible to open login modal');
+			const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+			if (isIframe() && ledgerConnector) {
+				await connectAsync({connector: ledgerConnector, chainId: currentChainID});
+				return;
+			}
+
+			if (openConnectModal) {
+				openConnectModal();
+			} else {
+				if (openChainModal) {
+					openChainModal();
+					return;
+				}
+				console.warn('Impossible to open login modal');
+			}
 		}
-	}, [connectAsync, connectors, currentChainID, openConnectModal]);
+	}, [
+		address,
+		connectAsync,
+		connector,
+		connectors,
+		currentChainID,
+		isConnected,
+		openAccountModal,
+		openChainModal,
+		openConnectModal
+	]);
 
 	const contextValue = {
 		address: address ? toAddress(address) : undefined,
