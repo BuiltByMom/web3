@@ -30,10 +30,13 @@ export const toBigInt = (amount?: TNumberish): bigint => {
 };
 
 export function toBigNumberAsAmount(bnAmount = 0n, decimals = 18, decimalsToDisplay = 2, symbol = ''): string {
-	let locale = 'fr-FR';
+	let locale = 'en-US';
 	if (typeof navigator !== 'undefined') {
 		locale = navigator.language || 'fr-FR';
 	}
+	const locales = [];
+	locales.push('en-US');
+	locales.push(locale);
 
 	let symbolWithPrefix = symbol;
 	if (symbol.length > 0 && symbol !== '%') {
@@ -206,10 +209,14 @@ export function formatLocalAmount(amount: number, decimals: number, symbol: stri
 	 ** - If smbol is percent, then we will display as `12 %` or `12%` (US)
 	 ** - If symbol is any other token, we will display as `123,79 USDC` or `USDC 123.79` (US)
 	 **********************************************************************************************/
-	let locale = 'fr-FR';
+	let locale = 'en-US';
 	if (typeof navigator !== 'undefined') {
 		locale = navigator.language || 'fr-FR';
 	}
+	const locales = [];
+	locales.push('en-US');
+	locales.push(locale);
+
 	const {shouldDisplaySymbol, shouldCompactValue, ...rest} = options;
 	const intlOptions: Intl.NumberFormatOptions = rest;
 	let isPercent = false;
@@ -297,6 +304,12 @@ export function formatAmount(
 	if (typeof navigator !== 'undefined') {
 		locale = navigator.language || 'fr-FR';
 	}
+	const locales = [];
+	if (options?.locales) {
+		locales.push(...options.locales);
+	}
+	locales.push('en-US');
+	locales.push(locale);
 	if (maximumFractionDigits < minimumFractionDigits) {
 		maximumFractionDigits = minimumFractionDigits;
 	}
@@ -309,12 +322,6 @@ export function formatAmount(
 	if (isNaN(amount)) {
 		amount = 0;
 	}
-	const locales = [];
-	if (options?.locales) {
-		locales.push(...options.locales);
-	}
-	locales.push('en-US');
-	locales.push(locale);
 	let formattedAmount = new Intl.NumberFormat(locales, {
 		minimumFractionDigits,
 		maximumFractionDigits
