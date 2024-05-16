@@ -45,6 +45,7 @@ export type TWriteTransaction = {
 	onTrySomethingElse?: () => Promise<TTxResponse>; //When the abi is incorrect, ex: usdt, we may need to bypass the error and try something else
 	shouldDisplaySuccessToast?: boolean;
 	shouldDisplayErrorToast?: boolean;
+	shouldResetStatus?: boolean;
 };
 
 type TPrepareWriteContractConfig = SimulateContractParameters & {
@@ -54,6 +55,8 @@ type TPrepareWriteContractConfig = SimulateContractParameters & {
 	confirmation?: number;
 };
 export async function handleTx(args: TWriteTransaction, props: TPrepareWriteContractConfig): Promise<TTxResponse> {
+	const {shouldResetStatus = true} = args;
+
 	const config = retrieveConfig();
 	args.statusHandler?.({...defaultTxStatus, pending: true});
 	let wagmiProvider = await toWagmiProvider(args.connector);
@@ -132,8 +135,10 @@ export async function handleTx(args: TWriteTransaction, props: TPrepareWriteCont
 		console.error(error);
 		return {isSuccessful: false, error};
 	} finally {
-		setTimeout((): void => {
-			args.statusHandler?.({...defaultTxStatus});
-		}, 3000);
+		if (shouldResetStatus) {
+			setTimeout((): void => {
+				args.statusHandler?.({...defaultTxStatus});
+			}, 3000);
+		}
 	}
 }
