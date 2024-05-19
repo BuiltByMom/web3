@@ -9,12 +9,12 @@ import {
 	WFTM_TOKEN_ADDRESS
 } from '../constants';
 import {toAddress} from '../tools.address';
-import {localhost, anotherLocalhost} from './networks';
+import {retrieveConfig} from './config';
+import {anotherLocalhost, localhost} from './networks';
 
 import type {Chain, PublicClient} from 'viem';
 import type {TAddress} from '../../types/address';
 import type {TDict, TNDict} from '../../types/mixed';
-import {retrieveConfig} from './config';
 
 export type TChainContract = {
 	address: TAddress;
@@ -170,8 +170,17 @@ function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 				...extendedChain.contracts,
 				wrappedToken: wrappedChainTokens[extendedChain.id]
 			};
-			extendedChain.defaultRPC =
-				process.env.JSON_RPC_URL?.[extendedChain.id] || extendedChain?.rpcUrls?.public?.http?.[0] || '';
+
+			const oldJsonRPCURL = process.env.JSON_RPC_URL?.[extendedChain.id];
+			if (oldJsonRPCURL) {
+				console.debug(
+					`JSON_RPC_URL[${extendedChain.id}] is deprecated. Please use RPC_URL_FOR_${extendedChain.id}`
+				);
+			}
+			const newJsonRPCURL = process.env[`RPC_URL_FOR_${extendedChain.id}`];
+			const defaultJsonRPCURL = extendedChain?.rpcUrls?.public?.http?.[0];
+
+			extendedChain.defaultRPC = newJsonRPCURL || oldJsonRPCURL || defaultJsonRPCURL || '';
 			extendedChain.rpcUrls['alchemy'] = {http: [getAlchemyBaseURL(extendedChain.id)]};
 			extendedChain.rpcUrls['infura'] = {http: [getInfuraBaseURL(extendedChain.id)]};
 			extendedChain.defaultBlockExplorer =
