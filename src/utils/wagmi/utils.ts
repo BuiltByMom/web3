@@ -174,10 +174,10 @@ function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 			const oldJsonRPCURL = process.env.JSON_RPC_URL?.[extendedChain.id];
 			if (oldJsonRPCURL) {
 				console.debug(
-					`JSON_RPC_URL[${extendedChain.id}] is deprecated. Please use RPC_URL_FOR_${extendedChain.id}`
+					`JSON_RPC_URL[${extendedChain.id}] is deprecated. Please use RPC_URI_FOR_${extendedChain.id}`
 				);
 			}
-			const newJsonRPCURL = process.env[`RPC_URL_FOR_${extendedChain.id}`];
+			const newJsonRPCURL = process.env[`RPC_URI_FOR_${extendedChain.id}`];
 			const defaultJsonRPCURL = extendedChain?.rpcUrls?.public?.http?.[0];
 
 			extendedChain.defaultRPC = newJsonRPCURL || oldJsonRPCURL || defaultJsonRPCURL || '';
