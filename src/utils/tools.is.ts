@@ -3,7 +3,7 @@ import {zeroAddress} from 'viem';
 import {ETH_TOKEN_ADDRESS} from './constants';
 import {toAddress} from './tools.address';
 
-import type {TAddress, TAddressLike} from '../types/address';
+import type {TAddress} from '../types/address';
 
 export function isZero(value?: bigint | number | string | null): boolean {
 	if (value === null || value === undefined) {
@@ -34,8 +34,9 @@ export function isZero(value?: bigint | number | string | null): boolean {
 /******************************************************************************
  * isAddress - Checks if a string is a valid Ethereum address.
  *****************************************************************************/
-export function isAddress(value?: TAddressLike | string | undefined): boolean {
-	return !isZeroAddress(toAddress(value));
+export function isAddress(address?: string | null): address is TAddress {
+	const regex = /^0x([0-9a-f][0-9a-f])*$/i;
+	return !!address && regex.test(address) && !isZeroAddress(address);
 }
 
 /******************************************************************************

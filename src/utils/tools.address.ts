@@ -1,6 +1,6 @@
 import {getAddress, zeroAddress} from 'viem';
 
-import {isAddress, isTAddress, isZeroAddress} from './tools.is';
+import {isTAddress, isZeroAddress} from './tools.is';
 
 import type {TAddress, TAddressLike, TAddressSmol, TDict} from '../types';
 
@@ -66,7 +66,7 @@ function toChecksumAddress(address?: string | null | undefined): TAddressSmol {
  ** will be truncated to 0x1234...5678
  *****************************************************************************/
 export function truncateHex(address: string | undefined, size: number): string {
-	if (!isAddress(address)) {
+	if (isZeroAddress(address)) {
 		if (size === 0) {
 			return zeroAddress;
 		}
