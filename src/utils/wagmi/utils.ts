@@ -171,16 +171,17 @@ function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 				wrappedToken: wrappedChainTokens[extendedChain.id]
 			};
 
-			const newJsonRPCURL = process.env[`RPC_URI_FOR_${extendedChain.id}`];
-			const oldJsonRPCURL = process.env.JSON_RPC_URL?.[extendedChain.id];
-			if (!newJsonRPCURL && oldJsonRPCURL) {
+			const newRPC = process.env.RPC_URI_FOR?.[extendedChain.id] || '';
+			const newRPCBugged = process.env[`RPC_URI_FOR_${extendedChain.id}`];
+			const oldRPC = process.env.JSON_RPC_URI?.[extendedChain.id] || process.env.JSON_RPC_URL?.[extendedChain.id];
+			if (!newRPC && (newRPCBugged || oldRPC)) {
 				console.debug(
-					`JSON_RPC_URL[${extendedChain.id}] is deprecated. Please use RPC_URI_FOR_${extendedChain.id}`
+					`JSON_RPC_URI[${extendedChain.id}] and RPC_URI_FOR_${extendedChain.id} are deprecated. Please use RPC_URI_FOR[${extendedChain.id}]`
 				);
 			}
 			const defaultJsonRPCURL = extendedChain?.rpcUrls?.public?.http?.[0];
 
-			extendedChain.defaultRPC = newJsonRPCURL || oldJsonRPCURL || defaultJsonRPCURL || '';
+			extendedChain.defaultRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL || '';
 			extendedChain.rpcUrls['alchemy'] = {http: [getAlchemyBaseURL(extendedChain.id)]};
 			extendedChain.rpcUrls['infura'] = {http: [getInfuraBaseURL(extendedChain.id)]};
 			extendedChain.defaultBlockExplorer =
@@ -206,12 +207,15 @@ export function getClient(chainID: number): PublicClient {
 		throw new Error(`Chain ${chainID} is not supported`);
 	}
 	const chainConfig = indexedWagmiChains?.[chainID] || retrieveConfig().chains.find(chain => chain.id === chainID);
-	const newJsonRPCURL = process.env[`RPC_URI_FOR_${chainID}`];
-	const oldJsonRPCURL = process.env.JSON_RPC_URL?.[chainID];
+
+	const newRPC = process.env.RPC_URI_FOR?.[chainID] || '';
+	const newRPCBugged = process.env[`RPC_URI_FOR_${chainID}`];
+	const oldRPC = process.env.JSON_RPC_URI?.[chainID] || process.env.JSON_RPC_URL?.[chainID];
 
 	let url =
-		newJsonRPCURL ||
-		oldJsonRPCURL ||
+		newRPC ||
+		oldRPC ||
+		newRPCBugged ||
 		chainConfig.rpcUrls.default.http[0] ||
 		chainConfig.rpcUrls.alchemy.http[0] ||
 		chainConfig.rpcUrls.infura.http[0] ||
