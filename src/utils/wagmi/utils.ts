@@ -206,8 +206,12 @@ export function getClient(chainID: number): PublicClient {
 		throw new Error(`Chain ${chainID} is not supported`);
 	}
 	const chainConfig = indexedWagmiChains?.[chainID] || retrieveConfig().chains.find(chain => chain.id === chainID);
+	const newJsonRPCURL = process.env[`RPC_URI_FOR_${chainID}`];
+	const oldJsonRPCURL = process.env.JSON_RPC_URL?.[chainID];
+
 	let url =
-		process.env.JSON_RPC_URL?.[chainID] ||
+		newJsonRPCURL ||
+		oldJsonRPCURL ||
 		chainConfig.rpcUrls.default.http[0] ||
 		chainConfig.rpcUrls.alchemy.http[0] ||
 		chainConfig.rpcUrls.infura.http[0] ||
