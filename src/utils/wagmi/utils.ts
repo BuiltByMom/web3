@@ -4,7 +4,7 @@ import * as wagmiChains from 'viem/chains';
 import {retrieveConfig} from './config';
 import {anotherLocalhost, localhost} from './networks';
 
-import type {Chain, Client} from 'viem';
+import type {Chain, PublicClient} from 'viem';
 import type {TAddress} from '../../types/address';
 import type {TDict, TNDict} from '../../types/mixed';
 
@@ -115,7 +115,7 @@ export function getNetwork(chainID: number): TExtendedChain {
 	return indexedWagmiChains[chainID];
 }
 
-export function getClient(chainID: number): Client {
+export function getClient(chainID: number): PublicClient {
 	if (!indexedWagmiChains[chainID]) {
 		throw new Error(`Chain ${chainID} is not supported`);
 	}
