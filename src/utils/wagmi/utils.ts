@@ -38,10 +38,14 @@ function getAlchemyBaseURL(chainID: number): string {
 			return 'https://opt-mainnet.g.alchemy.com/v2';
 		case wagmiChains.polygon.id:
 			return 'https://polygon-mainnet.g.alchemy.com/v2';
+		case wagmiChains.polygonZkEvm.id:
+			return 'https://polygonzkevm-mainnet.g.alchemy.com/v2';
 		case wagmiChains.base.id:
 			return 'https://base-mainnet.g.alchemy.com/v2';
 		case wagmiChains.arbitrum.id:
 			return 'https://arb-mainnet.g.alchemy.com/v2';
+		case wagmiChains.zkSync.id:
+			return 'https://zksync-mainnet.g.alchemy.com/v2';
 	}
 	return '';
 }
