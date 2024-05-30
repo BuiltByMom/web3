@@ -10,6 +10,7 @@ import {ETH_TOKEN_ADDRESS, MULTICALL3_ADDRESS} from '../utils/constants';
 import {decodeAsBigInt, decodeAsNumber, decodeAsString} from '../utils/decoder';
 import {toNormalizedBN} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
+import {createUniqueID} from '../utils/tools.identifier';
 import {isEthAddress, isZero, isZeroAddress} from '../utils/tools.is';
 import {retrieveConfig} from '../utils/wagmi';
 import {getNetwork} from '../utils/wagmi/utils';
@@ -255,6 +256,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	const data = useRef<TDataRef>({nonce: 0, address: toAddress(), balances: {}});
 	const stringifiedTokens = useMemo((): string => serialize(props?.tokens || []), [props?.tokens]);
 	const currentlyConnectedAddress = useRef<TAddress | undefined>(undefined);
+	const currentIdentifier = useRef<string | undefined>();
 
 	useEffect(() => {
 		if (toAddress(userAddress) !== toAddress(currentlyConnectedAddress.current)) {
@@ -265,7 +267,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 				balances: {},
 				nonce: 0
 			};
-			set_status(defaultStatus);
+			set_status({...defaultStatus, isLoading: true});
 		}
 	}, [userAddress]);
 
@@ -501,6 +503,14 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			isRefetching: defaultStatus.isFetched
 		});
 
+		/******************************************************************************************
+		 ** Everytime this function is re-triggered, we will create a unique identifier based on
+		 ** the stringified tokens and the user address. This will allow us to prevent multiple
+		 ** final setState that might jump the UI.
+		 *****************************************************************************************/
+		const identifier = createUniqueID(serialize({stringifiedTokens, userAddress}));
+		currentIdentifier.current = identifier;
+
 		const tokens = (JSON.parse(stringifiedTokens) || []) as TUseBalancesTokens[];
 		const tokensPerChainID: TNDict<TUseBalancesTokens[]> = {};
 		const alreadyAdded: TNDict<TDict<boolean>> = {};
@@ -537,7 +547,14 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			await Promise.all(allPromises);
 		}
 
-		set_status({...defaultStatus, isSuccess: true, isFetched: true});
+		/******************************************************************************************
+		 ** If the current identifier is the same as the one we created, we can set the status to
+		 ** success and fetched. This will prevent the UI to jump if the user changes the tokens
+		 ** or the address.
+		 *****************************************************************************************/
+		if (currentIdentifier.current === identifier) {
+			set_status({...defaultStatus, isSuccess: true, isFetched: true});
+		}
 	}, [stringifiedTokens, userAddress, updateBalancesCall]);
 
 	const contextValue = useDeepCompareMemo(
