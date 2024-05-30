@@ -251,6 +251,8 @@ export async function getBalances(
 export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	const {address: userAddress} = useWeb3();
 	const [status, set_status] = useState<TDefaultStatus>(defaultStatus);
+	const [someStatus, set_someStatus] = useState<TDefaultStatus>(defaultStatus);
+	const [updateStatus, set_updateStatus] = useState<TDefaultStatus>(defaultStatus);
 	const [error, set_error] = useState<Error | undefined>(undefined);
 	const [balances, set_balances] = useState<TChainTokens>({});
 	const data = useRef<TDataRef>({nonce: 0, address: toAddress(), balances: {}});
@@ -323,7 +325,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 		if (isZero(tokens.length)) {
 			return {};
 		}
-		set_status({
+		set_updateStatus({
 			...defaultStatus,
 			isLoading: true,
 			isFetching: true,
@@ -395,7 +397,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 					}
 				})
 			);
-			set_status({...defaultStatus, isSuccess: true, isFetched: true});
+			set_updateStatus({...defaultStatus, isSuccess: true, isFetched: true});
 		}
 
 		return updated;
@@ -408,7 +410,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 **************************************************************************/
 	const onUpdateSome = useCallback(
 		async (tokenList: TUseBalancesTokens[]): Promise<TChainTokens> => {
-			set_status({
+			set_someStatus({
 				...defaultStatus,
 				isLoading: true,
 				isFetching: true,
@@ -484,7 +486,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 				}
 				return updated;
 			});
-			set_status({...defaultStatus, isSuccess: true, isFetched: true});
+			set_someStatus({...defaultStatus, isSuccess: true, isFetched: true});
 			return updated;
 		},
 		[userAddress]
@@ -563,31 +565,49 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			onUpdate: onUpdate,
 			onUpdateSome: onUpdateSome,
 			error,
-			isLoading: status.isLoading,
-			isFetching: status.isFetching,
-			isSuccess: status.isSuccess,
-			isError: status.isError,
-			isFetched: status.isFetched,
-			isRefetching: status.isRefetching,
-			status: status.isError
-				? 'error'
-				: status.isLoading || status.isFetching
-					? 'loading'
-					: status.isSuccess
-						? 'success'
-						: 'unknown'
+			isLoading: status.isLoading || someStatus.isLoading || updateStatus.isLoading,
+			isFetching: status.isFetching || someStatus.isFetching || updateStatus.isFetching,
+			isSuccess: status.isSuccess && someStatus.isSuccess && updateStatus.isSuccess,
+			isError: status.isError || someStatus.isError || updateStatus.isError,
+			isFetched: status.isFetched && someStatus.isFetched && updateStatus.isFetched,
+			isRefetching: status.isRefetching || someStatus.isRefetching || updateStatus.isRefetching,
+			status:
+				status.isError || someStatus.isError || updateStatus.isError
+					? 'error'
+					: status.isLoading ||
+						  status.isFetching ||
+						  someStatus.isLoading ||
+						  someStatus.isFetching ||
+						  updateStatus.isLoading ||
+						  updateStatus.isFetching
+						? 'loading'
+						: status.isSuccess && someStatus.isSuccess && updateStatus.isSuccess
+							? 'success'
+							: 'unknown'
 		}),
 		[
 			balances,
 			error,
 			onUpdate,
 			onUpdateSome,
+			someStatus.isError,
+			someStatus.isFetched,
+			someStatus.isFetching,
+			someStatus.isLoading,
+			someStatus.isRefetching,
+			someStatus.isSuccess,
 			status.isError,
 			status.isFetched,
 			status.isFetching,
 			status.isLoading,
 			status.isRefetching,
-			status.isSuccess
+			status.isSuccess,
+			updateStatus.isError,
+			updateStatus.isFetched,
+			updateStatus.isFetching,
+			updateStatus.isLoading,
+			updateStatus.isRefetching,
+			updateStatus.isSuccess
 		]
 	);
 
