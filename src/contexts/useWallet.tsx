@@ -21,6 +21,8 @@ type TWalletContext = {
 	getBalance: ({address, chainID}: TTokenAndChain) => TNormalizedBN;
 	balances: TChainTokens;
 	isLoading: boolean;
+	isLoadingOnCurrentChain: boolean;
+	isLoadingOnChain: (chainID?: number) => boolean;
 	onRefresh: (tokenList?: TUseBalancesTokens[]) => Promise<TChainTokens>;
 	onRefreshWithList: (tokenList: TDict<TToken>) => Promise<TChainTokens>;
 };
@@ -30,6 +32,8 @@ const defaultProps = {
 	getBalance: (): TNormalizedBN => zeroNormalizedBN,
 	balances: {},
 	isLoading: true,
+	isLoadingOnCurrentChain: true,
+	isLoadingOnChain: (): boolean => true,
 	onRefresh: async (): Promise<TChainTokens> => ({}),
 	onRefreshWithList: async (): Promise<TChainTokens> => ({})
 };
@@ -39,14 +43,11 @@ const defaultProps = {
  ** interact with our app, aka mostly the balances and the token prices.
  ******************************************************************************/
 const WalletContext = createContext<TWalletContext>(defaultProps);
-export const WalletContextApp = memo(function WalletContextApp({
-	children,
-	shouldWorkOnTestnet
-}: {
+export const WalletContextApp = memo(function WalletContextApp(props: {
 	children: ReactElement;
 	shouldWorkOnTestnet?: boolean;
 }): ReactElement {
-	const {tokenLists} = useTokenList();
+	const {isInitialized, tokenLists} = useTokenList();
 	const {address} = useWeb3();
 	const {chainID} = useChainID();
 	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens', {
@@ -59,6 +60,9 @@ export const WalletContextApp = memo(function WalletContextApp({
 	 ** network.
 	 **************************************************************************/
 	const availableTokens = useMemo((): TUseBalancesTokens[] => {
+		if (!isInitialized) {
+			return [];
+		}
 		const tokens: TUseBalancesTokens[] = [];
 		for (const forChainID of Object.values(tokenLists)) {
 			for (const token of Object.values(forChainID)) {
@@ -83,10 +87,10 @@ export const WalletContextApp = memo(function WalletContextApp({
 
 		const config = retrieveConfig();
 		for (const chain of config.chains) {
-			if (chain.testnet && !shouldWorkOnTestnet) {
+			if (chain.testnet && !props.shouldWorkOnTestnet) {
 				continue;
 			}
-			if (chain.id === 1337 && !shouldWorkOnTestnet) {
+			if (chain.id === 1337 && !props.shouldWorkOnTestnet) {
 				continue;
 			}
 			tokens.push({
@@ -98,14 +102,25 @@ export const WalletContextApp = memo(function WalletContextApp({
 			});
 		}
 		return tokens;
-	}, [tokenLists, chainID, shouldWorkOnTestnet]);
+	}, [tokenLists, chainID, isInitialized, props.shouldWorkOnTestnet]);
+
+	console.warn(availableTokens);
 
 	/**************************************************************************
 	 ** This hook triggers the fetching of the balances of the available tokens
 	 ** and stores them in a state. It also provides a function to refresh the
 	 ** balances of the tokens.
 	 **************************************************************************/
-	const {data: balances, onUpdate, onUpdateSome, isLoading} = useBalances({tokens: availableTokens});
+	const {
+		data: balances,
+		onUpdate,
+		onUpdateSome,
+		isLoading,
+		chainLoadingStatus
+	} = useBalances({
+		tokens: availableTokens,
+		priorityChainID: chainID
+	});
 
 	/**************************************************************************
 	 ** onRefresh is a function that allows to refresh the balances of the
@@ -185,6 +200,19 @@ export const WalletContextApp = memo(function WalletContextApp({
 		[balances]
 	);
 
+	/**************************************************************************
+	 ** isLoadingOnChain is a safe retrieval of the loading status of a chain
+	 **************************************************************************/
+	const isLoadingOnChain = useCallback(
+		(_chainID?: number): boolean => {
+			if (!_chainID) {
+				return chainLoadingStatus?.[chainID] || false;
+			}
+			return chainLoadingStatus?.[_chainID] || false;
+		},
+		[chainID, chainLoadingStatus]
+	);
+
 	/***************************************************************************
 	 **	Setup and render the Context provider to use in the app.
 	 ***************************************************************************/
@@ -194,13 +222,25 @@ export const WalletContextApp = memo(function WalletContextApp({
 			getBalance,
 			balances,
 			isLoading: isLoading || false,
+			isLoadingOnCurrentChain: chainLoadingStatus?.[chainID] || false,
+			isLoadingOnChain,
 			onRefresh,
 			onRefreshWithList
 		}),
-		[getBalance, balances, getToken, isLoading, onRefresh, onRefreshWithList]
+		[
+			getToken,
+			getBalance,
+			balances,
+			isLoading,
+			chainLoadingStatus,
+			chainID,
+			isLoadingOnChain,
+			onRefresh,
+			onRefreshWithList
+		]
 	);
 
-	return <WalletContext.Provider value={contextValue}>{children}</WalletContext.Provider>;
+	return <WalletContext.Provider value={contextValue}>{props.children}</WalletContext.Provider>;
 });
 
 export const useWallet = (): TWalletContext => useContext(WalletContext);

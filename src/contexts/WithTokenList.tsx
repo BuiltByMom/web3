@@ -18,6 +18,7 @@ import type {TDict, TNDict, TToken, TTokenList} from '../types/mixed';
 export type TTokenListProps = {
 	tokenLists: TNDict<TDict<TToken>>;
 	currentNetworkTokenList: TDict<TToken>;
+	isInitialized: boolean;
 	isFromExtraList: (props: {address: TAddress; chainID: number}) => boolean;
 	isCustomToken: (props: {address: TAddress; chainID: number}) => boolean;
 	getToken: (props: {address: TAddress; chainID: number}) => TToken | undefined;
@@ -27,6 +28,7 @@ export type TTokenListProps = {
 const defaultProps: TTokenListProps = {
 	tokenLists: {},
 	currentNetworkTokenList: {},
+	isInitialized: false,
 	isFromExtraList: (): boolean => false,
 	isCustomToken: (): boolean => false,
 	getToken: (): TToken | undefined => undefined,
@@ -83,6 +85,7 @@ export const WithTokenList = ({
 	const [tokenList, set_tokenList] = useState<TNDict<TDict<TToken>>>({});
 	const [tokenListExtra, set_tokenListExtra] = useState<TNDict<TDict<TToken>>>({});
 	const [tokenListCustom, set_tokenListCustom] = useState<TNDict<TDict<TToken>>>({});
+	const [isInitialized, set_isInitialized] = useState([false, false, false]);
 	const hashList = useMemo((): string => lists.join(','), [lists]);
 
 	/************************************************************************************
@@ -151,6 +154,7 @@ export const WithTokenList = ({
 			}
 		}
 		set_tokenList(tokenListTokens);
+		set_isInitialized(prev => [true, prev[1], prev[2]]);
 	}, [hashList]);
 
 	/************************************************************************************
@@ -214,6 +218,7 @@ export const WithTokenList = ({
 			}
 		}
 		set_tokenListExtra(tokenListTokens);
+		set_isInitialized(prev => [prev[0], true, prev[2]]);
 	}, [extraTokenlist]);
 
 	/************************************************************************************
@@ -269,6 +274,7 @@ export const WithTokenList = ({
 				}
 			}
 			set_tokenListCustom(tokenListTokens);
+			set_isInitialized(prev => [prev[0], prev[1], true]);
 		}
 	}, [extraTokens]);
 
@@ -370,11 +376,20 @@ export const WithTokenList = ({
 			currentNetworkTokenList: currentNetworkList,
 			isFromExtraList,
 			isCustomToken,
+			isInitialized: isInitialized[0] && isInitialized[1] && isInitialized[2],
 			set_tokenList,
 			addCustomToken,
 			getToken
 		}),
-		[addCustomToken, aggregatedTokenList, currentNetworkList, getToken, isCustomToken, isFromExtraList]
+		[
+			addCustomToken,
+			aggregatedTokenList,
+			currentNetworkList,
+			getToken,
+			isCustomToken,
+			isInitialized,
+			isFromExtraList
+		]
 	);
 
 	return <TokenList.Provider value={contextValue}>{children}</TokenList.Provider>;
