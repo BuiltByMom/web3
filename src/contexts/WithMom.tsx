@@ -13,19 +13,20 @@ import type {Config} from 'wagmi';
 
 type TWithMom = {
 	children: ReactElement;
+	defaultNetwork?: Chain;
 	supportedChains: Chain[];
 	tokenLists?: string[];
 };
 
 const queryClient = new QueryClient();
-function WithMom({children, supportedChains, tokenLists}: TWithMom): ReactElement {
+function WithMom({children, supportedChains, defaultNetwork, tokenLists}: TWithMom): ReactElement {
 	const config = useMemo((): Config => getConfig({chains: supportedChains}), [supportedChains]);
 
 	return (
 		<WagmiProvider config={config}>
 			<QueryClientProvider client={queryClient}>
 				<RainbowKitProvider>
-					<Web3ContextApp>
+					<Web3ContextApp defaultNetwork={defaultNetwork}>
 						<WithTokenList lists={tokenLists}>
 							<>{children}</>
 						</WithTokenList>

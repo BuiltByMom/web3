@@ -1,4 +1,5 @@
 import {createContext, useCallback, useContext, useMemo, useState} from 'react';
+import {mainnet} from 'viem/chains';
 import {
 	useAccount,
 	useConnect,
@@ -16,6 +17,7 @@ import {toAddress} from '../utils/tools.address';
 import {retrieveConfig} from '../utils/wagmi';
 
 import type {ReactElement} from 'react';
+import type {Chain} from 'viem';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types/address';
 
@@ -56,12 +58,12 @@ const defaultState: TWeb3Context = {
 };
 
 const Web3Context = createContext<TWeb3Context>(defaultState);
-export const Web3ContextApp = ({children}: {children: ReactElement}): ReactElement => {
+export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: Chain}): ReactElement => {
 	const {address, isConnecting, isConnected, isDisconnected, connector, chain} = useAccount();
 	const {connectors, connectAsync} = useConnect();
 	const {disconnect} = useDisconnect();
 	const {switchChain} = useSwitchChain();
-	const {data: ensName} = useEnsName({address: address, chainId: 1});
+	const {data: ensName} = useEnsName({address: address, chainId: mainnet.id});
 	const {data: walletClient} = useWalletClient();
 	const [currentChainID, set_currentChainID] = useState(chain?.id);
 	const publicClient = usePublicClient();
@@ -85,7 +87,7 @@ export const Web3ContextApp = ({children}: {children: ReactElement}): ReactEleme
 		if (isIframe()) {
 			const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
 			if (ledgerConnector) {
-				await connectAsync({connector: ledgerConnector, chainId: chain?.id || 1});
+				await connectAsync({connector: ledgerConnector, chainId: chain?.id || props.defaultNetwork?.id || 1});
 				return;
 			}
 		}
@@ -180,14 +182,16 @@ export const Web3ContextApp = ({children}: {children: ReactElement}): ReactEleme
 		lensProtocolHandle: '',
 		hasProvider: !!(walletClient || publicClient),
 		provider: connector,
-		chainID: isConnected ? Number(chain?.id || 1) : Number(currentChainID || 1),
+		chainID: isConnected
+			? Number(chain?.id || props.defaultNetwork?.id || 1)
+			: Number(currentChainID || props.defaultNetwork?.id || 1),
 		onConnect,
 		onSwitchChain,
 		openLoginModal,
 		onDesactivate: onDesactivate
 	};
 
-	return <Web3Context.Provider value={contextValue}>{children}</Web3Context.Provider>;
+	return <Web3Context.Provider value={contextValue}>{props.children}</Web3Context.Provider>;
 };
 
 export const useWeb3 = (): TWeb3Context => useContext(Web3Context);
