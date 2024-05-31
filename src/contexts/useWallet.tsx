@@ -104,8 +104,6 @@ export const WalletContextApp = memo(function WalletContextApp(props: {
 		return tokens;
 	}, [tokenLists, chainID, isInitialized, props.shouldWorkOnTestnet]);
 
-	console.warn(availableTokens);
-
 	/**************************************************************************
 	 ** This hook triggers the fetching of the balances of the available tokens
 	 ** and stores them in a state. It also provides a function to refresh the

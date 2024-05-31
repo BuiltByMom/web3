@@ -566,10 +566,6 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 				}
 				await Promise.all(allPromises);
 				if (currentIdentifier.current === identifier) {
-					console.log(
-						`Setting chain ${chainID} to success for ${tokens.length} tokens`,
-						tokensPerChainID[chainID]
-					);
 					set_chainStatus(prev => ({
 						chainLoadingStatus: {...(prev?.chainLoadingStatus || {}), [chainID]: false},
 						chainSuccessStatus: {...(prev?.chainSuccessStatus || {}), [chainID]: true},
