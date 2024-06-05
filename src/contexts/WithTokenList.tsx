@@ -274,8 +274,8 @@ export const WithTokenList = ({
 				}
 			}
 			set_tokenListCustom(tokenListTokens);
-			set_isInitialized(prev => [prev[0], prev[1], true]);
 		}
+		set_isInitialized(prev => [prev[0], prev[1], true]);
 	}, [extraTokens]);
 
 	/************************************************************************************
