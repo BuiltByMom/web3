@@ -196,7 +196,8 @@ export async function performCall(
 export async function getBalances(
 	chainID: number,
 	address: TAddress | undefined,
-	tokens: TUseBalancesTokens[]
+	tokens: TUseBalancesTokens[],
+	shouldForceFetch = false
 ): Promise<[TDict<TToken>, Error | undefined]> {
 	let result: TDict<TToken> = {};
 	const ownerAddress = address;
@@ -206,7 +207,7 @@ export async function getBalances(
 		const {address: token} = element;
 
 		const tokenUpdateInfo = TOKEN_UPDATE[`${chainID}/${toAddress(element.address)}`];
-		if (tokenUpdateInfo?.lastUpdate && Date.now() - tokenUpdateInfo?.lastUpdate < 60_000) {
+		if (tokenUpdateInfo?.lastUpdate && Date.now() - tokenUpdateInfo?.lastUpdate < 60_000 && !shouldForceFetch) {
 			if (toAddress(tokenUpdateInfo.owner) === toAddress(ownerAddress)) {
 				result[toAddress(token)] = tokenUpdateInfo;
 				continue;
@@ -377,7 +378,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			}
 
 			for (const chunkTokens of chunks) {
-				const [newRawData, err] = await getBalances(chainID || 1, userAddress, chunkTokens);
+				const [newRawData, err] = await getBalances(chainID || 1, userAddress, chunkTokens, true);
 				if (err) {
 					set_error(err as Error);
 				}
@@ -462,7 +463,12 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 					chunks.push(tokens.slice(i, i + 200));
 				}
 				for (const chunkTokens of chunks) {
-					const [newRawData, err] = await getBalances(chainID || 1, toAddress(userAddress), chunkTokens);
+					const [newRawData, err] = await getBalances(
+						chainID || 1,
+						toAddress(userAddress),
+						chunkTokens,
+						true
+					);
 					if (err) {
 						set_error(err as Error);
 					}
