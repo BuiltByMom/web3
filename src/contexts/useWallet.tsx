@@ -23,7 +23,11 @@ type TWalletContext = {
 	isLoading: boolean;
 	isLoadingOnCurrentChain: boolean;
 	isLoadingOnChain: (chainID?: number) => boolean;
-	onRefresh: (tokenList?: TUseBalancesTokens[]) => Promise<TChainTokens>;
+	onRefresh: (
+		tokenList?: TUseBalancesTokens[],
+		shouldSaveInStorage?: boolean,
+		shouldForceFetch?: boolean
+	) => Promise<TChainTokens>;
 	onRefreshWithList: (tokenList: TDict<TToken>) => Promise<TChainTokens>;
 };
 
