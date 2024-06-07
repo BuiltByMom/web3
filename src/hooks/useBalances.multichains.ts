@@ -48,8 +48,8 @@ export type TChainStatus = {
 
 export type TUseBalancesRes = {
 	data: TChainTokens;
-	onUpdate: () => Promise<TChainTokens>;
-	onUpdateSome: (token: TUseBalancesTokens[]) => Promise<TChainTokens>;
+	onUpdate: (shouldForceFetch?: boolean) => Promise<TChainTokens>;
+	onUpdateSome: (token: TUseBalancesTokens[], shouldForceFetch?: boolean) => Promise<TChainTokens>;
 	error?: Error;
 	status: 'error' | 'loading' | 'success' | 'unknown';
 } & Omit<TDefaultStatus, 'isFetched' | 'isRefetching' | 'isFetching'> &
@@ -344,84 +344,92 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** This takes the whole list and is not optimized for performance, aka not
 	 ** send in a worker.
 	 **************************************************************************/
-	const onUpdate = useCallback(async (): Promise<TChainTokens> => {
-		const tokenList = (deserialize(stringifiedTokens) || []) as TUseBalancesTokens[];
-		const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
-		if (isZero(tokens.length)) {
-			return {};
-		}
-		set_updateStatus({...defaultStatus, isLoading: true});
-
-		const tokensPerChainID: TNDict<TUseBalancesTokens[]> = {};
-		const alreadyAdded: TNDict<TDict<boolean>> = {};
-		for (const token of tokens) {
-			if (!tokensPerChainID[token.chainID]) {
-				tokensPerChainID[token.chainID] = [];
+	const onUpdate = useCallback(
+		async (shouldForceFetch?: boolean): Promise<TChainTokens> => {
+			const tokenList = (deserialize(stringifiedTokens) || []) as TUseBalancesTokens[];
+			const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
+			if (isZero(tokens.length)) {
+				return {};
 			}
-			if (!alreadyAdded[token.chainID]) {
-				alreadyAdded[token.chainID] = {};
-			}
-			if (alreadyAdded[token.chainID][toAddress(token.address)]) {
-				continue;
-			}
-			tokensPerChainID[token.chainID].push(token);
-			alreadyAdded[token.chainID][toAddress(token.address)] = true;
-		}
+			set_updateStatus({...defaultStatus, isLoading: true});
 
-		const updated: TChainTokens = {};
-		for (const [chainIDStr, tokens] of Object.entries(tokensPerChainID)) {
-			const chainID = Number(chainIDStr);
-
-			const chunks = [];
-			for (let i = 0; i < tokens.length; i += 200) {
-				chunks.push(tokens.slice(i, i + 200));
+			const tokensPerChainID: TNDict<TUseBalancesTokens[]> = {};
+			const alreadyAdded: TNDict<TDict<boolean>> = {};
+			for (const token of tokens) {
+				if (!tokensPerChainID[token.chainID]) {
+					tokensPerChainID[token.chainID] = [];
+				}
+				if (!alreadyAdded[token.chainID]) {
+					alreadyAdded[token.chainID] = {};
+				}
+				if (alreadyAdded[token.chainID][toAddress(token.address)]) {
+					continue;
+				}
+				tokensPerChainID[token.chainID].push(token);
+				alreadyAdded[token.chainID][toAddress(token.address)] = true;
 			}
 
-			for (const chunkTokens of chunks) {
-				const [newRawData, err] = await getBalances(chainID || 1, userAddress, chunkTokens, true);
-				if (err) {
-					set_error(err as Error);
+			const updated: TChainTokens = {};
+			for (const [chainIDStr, tokens] of Object.entries(tokensPerChainID)) {
+				const chainID = Number(chainIDStr);
+
+				const chunks = [];
+				for (let i = 0; i < tokens.length; i += 200) {
+					chunks.push(tokens.slice(i, i + 200));
 				}
 
-				if (toAddress(userAddress) !== data?.current?.address) {
-					data.current = {
-						address: toAddress(userAddress),
-						balances: {},
-						nonce: 0
-					};
-				}
-				data.current.address = toAddress(userAddress);
-				for (const [address, element] of Object.entries(newRawData)) {
-					if (!updated[chainID]) {
-						updated[chainID] = {};
+				for (const chunkTokens of chunks) {
+					const [newRawData, err] = await getBalances(
+						chainID || 1,
+						userAddress,
+						chunkTokens,
+						shouldForceFetch
+					);
+					if (err) {
+						set_error(err as Error);
 					}
-					updated[chainID][address] = element;
 
-					if (!data.current.balances[chainID]) {
-						data.current.balances[chainID] = {};
+					if (toAddress(userAddress) !== data?.current?.address) {
+						data.current = {
+							address: toAddress(userAddress),
+							balances: {},
+							nonce: 0
+						};
 					}
-					data.current.balances[chainID][address] = {
-						...data.current.balances[chainID][address],
-						...element
-					};
+					data.current.address = toAddress(userAddress);
+					for (const [address, element] of Object.entries(newRawData)) {
+						if (!updated[chainID]) {
+							updated[chainID] = {};
+						}
+						updated[chainID][address] = element;
+
+						if (!data.current.balances[chainID]) {
+							data.current.balances[chainID] = {};
+						}
+						data.current.balances[chainID][address] = {
+							...data.current.balances[chainID][address],
+							...element
+						};
+					}
+					data.current.nonce += 1;
 				}
-				data.current.nonce += 1;
+
+				set_balances(
+					(b): TChainTokens => ({
+						...b,
+						[chainID]: {
+							...(b[chainID] || {}),
+							...data.current.balances[chainID]
+						}
+					})
+				);
+				set_updateStatus({...defaultStatus, isSuccess: true});
 			}
 
-			set_balances(
-				(b): TChainTokens => ({
-					...b,
-					[chainID]: {
-						...(b[chainID] || {}),
-						...data.current.balances[chainID]
-					}
-				})
-			);
-			set_updateStatus({...defaultStatus, isSuccess: true});
-		}
-
-		return updated;
-	}, [stringifiedTokens, userAddress]);
+			return updated;
+		},
+		[stringifiedTokens, userAddress]
+	);
 
 	/***************************************************************************
 	 ** onUpdateSome takes a list of tokens and fetches the balances for each
@@ -429,7 +437,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 	 ** issue as it should only be used for a little list of tokens.
 	 **************************************************************************/
 	const onUpdateSome = useCallback(
-		async (tokenList: TUseBalancesTokens[]): Promise<TChainTokens> => {
+		async (tokenList: TUseBalancesTokens[], shouldForceFetch?: boolean): Promise<TChainTokens> => {
 			set_someStatus({...defaultStatus, isLoading: true});
 			const chains: number[] = [];
 			const tokens = tokenList.filter(({address}: TUseBalancesTokens): boolean => !isZeroAddress(address));
@@ -467,7 +475,7 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 						chainID || 1,
 						toAddress(userAddress),
 						chunkTokens,
-						true
+						shouldForceFetch
 					);
 					if (err) {
 						set_error(err as Error);

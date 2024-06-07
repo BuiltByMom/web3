@@ -127,15 +127,19 @@ export const WalletContextApp = memo(function WalletContextApp(props: {
 	 ** This can also be used to add new tokens to the list of available tokens.
 	 **************************************************************************/
 	const onRefresh = useCallback(
-		async (tokenToUpdate?: TUseBalancesTokens[], shouldSaveInStorage?: boolean): Promise<TChainTokens> => {
+		async (
+			tokenToUpdate?: TUseBalancesTokens[],
+			shouldSaveInStorage?: boolean,
+			shouldForceFetch = false
+		): Promise<TChainTokens> => {
 			if (tokenToUpdate && tokenToUpdate.length > 0) {
-				const updatedBalances = await onUpdateSome(tokenToUpdate);
+				const updatedBalances = await onUpdateSome(tokenToUpdate, shouldForceFetch);
 				if (shouldSaveInStorage) {
 					saveExtraTokens([...(extraTokens || []), ...tokenToUpdate.map(t => toTokenListToken(t as TToken))]);
 				}
 				return updatedBalances;
 			}
-			const updatedBalances = await onUpdate();
+			const updatedBalances = await onUpdate(shouldForceFetch);
 			return updatedBalances;
 		},
 		[extraTokens, onUpdate, onUpdateSome, saveExtraTokens]
