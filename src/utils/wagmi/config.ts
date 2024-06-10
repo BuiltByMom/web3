@@ -100,14 +100,20 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			wsURI = 'ws' + wsURI;
 		}
 		const availableRPCs: string[] = [];
-		if (getNetwork(chain.id)?.defaultRPC) {
-			availableRPCs.push(getNetwork(chain.id)?.defaultRPC);
+		const newRPC = process.env.RPC_URI_FOR?.[chain.id] || '';
+		const newRPCBugged = process.env[`RPC_URI_FOR_${chain.id}`];
+		const oldRPC = process.env.JSON_RPC_URI?.[chain.id] || process.env.JSON_RPC_URL?.[chain.id];
+		const defaultJsonRPCURL = chain?.rpcUrls?.public?.http?.[0];
+		const injectedRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL || '';
+
+		if (injectedRPC) {
+			availableRPCs.push(injectedRPC);
 		}
-		if (getNetwork(chain.id)?.rpcUrls['alchemy'].http[0] && process.env.ALCHEMY_KEY) {
-			availableRPCs.push(`${getNetwork(chain.id)?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`);
+		if (chain?.rpcUrls['alchemy'].http[0] && process.env.ALCHEMY_KEY) {
+			availableRPCs.push(`${chain?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`);
 		}
-		if (getNetwork(chain.id)?.rpcUrls['infura'].http[0] && process.env.INFURA_PROJECT_ID) {
-			availableRPCs.push(`${getNetwork(chain.id)?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`);
+		if (chain?.rpcUrls['infura'].http[0] && process.env.INFURA_PROJECT_ID) {
+			availableRPCs.push(`${chain?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`);
 		}
 		chain.rpcUrls.default.http = [...availableRPCs, ...(chain.rpcUrls.default.http || [])];
 		chain.rpcUrls.default.webSocket = [wsURI, ...(chain.rpcUrls.default.webSocket || [])];
