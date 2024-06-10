@@ -88,6 +88,32 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		}, {})
 	});
 
+	for (const chain of config.chains) {
+		let wsURI = getNetwork(chain.id)?.defaultRPC;
+		if (wsURI.startsWith('nd-')) {
+			wsURI = wsURI.replace('nd-', 'ws-nd-');
+		}
+		if (wsURI.startsWith('infura.io')) {
+			wsURI = wsURI.replace('v3', 'ws/v3');
+		}
+		if (wsURI.startsWith('chainstack.com')) {
+			wsURI = 'ws' + wsURI;
+		}
+		const availableRPCs: string[] = [];
+		if (getNetwork(chain.id)?.defaultRPC) {
+			availableRPCs.push(getNetwork(chain.id)?.defaultRPC);
+		}
+		if (getNetwork(chain.id)?.rpcUrls['alchemy'].http[0] && process.env.ALCHEMY_KEY) {
+			availableRPCs.push(`${getNetwork(chain.id)?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`);
+		}
+		if (getNetwork(chain.id)?.rpcUrls['infura'].http[0] && process.env.INFURA_PROJECT_ID) {
+			availableRPCs.push(`${getNetwork(chain.id)?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`);
+		}
+		chain.rpcUrls.default.http = [...availableRPCs, ...(chain.rpcUrls.default.http || [])];
+		chain.rpcUrls.default.webSocket = [wsURI, ...(chain.rpcUrls.default.webSocket || [])];
+	}
+	console.log(chains);
+
 	CONFIG = config;
 	return config;
 }
