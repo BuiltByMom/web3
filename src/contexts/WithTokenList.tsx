@@ -6,9 +6,9 @@ import axios from 'axios';
 import {useLocalStorageValue} from '@react-hookz/web';
 
 import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
-import {useChainID} from '../hooks/useChainID';
 import {zeroNormalizedBN} from '../utils/format';
 import {toAddress} from '../utils/tools.address';
+import {useWeb3} from './useWeb3';
 
 import type {AxiosResponse} from 'axios';
 import type {Dispatch, ReactElement, SetStateAction} from 'react';
@@ -79,7 +79,7 @@ export const WithTokenList = ({
 		'https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/tokenlistooor.json'
 	]
 }: TTokenListProviderProps): ReactElement => {
-	const {chainID} = useChainID();
+	const {chainID} = useWeb3();
 	const {value: extraTokenlist} = useLocalStorageValue<string[]>('extraTokenlists');
 	const {value: extraTokens, set: set_extraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens');
 	const [tokenList, set_tokenList] = useState<TNDict<TDict<TToken>>>({});

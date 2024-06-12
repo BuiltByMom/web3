@@ -6,7 +6,6 @@ import {useDeepCompareMemo, useLocalStorageValue} from '@react-hookz/web';
 import {useWeb3} from '../contexts/useWeb3';
 import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
 import {useBalances} from '../hooks/useBalances.multichains';
-import {useChainID} from '../hooks/useChainID';
 import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, zeroNormalizedBN} from '../utils';
 import {retrieveConfig} from '../utils/wagmi';
 import {toTokenListToken, toTToken, useTokenList} from './WithTokenList';
@@ -52,8 +51,7 @@ export const WalletContextApp = memo(function WalletContextApp(props: {
 	shouldWorkOnTestnet?: boolean;
 }): ReactElement {
 	const {isInitialized, tokenLists} = useTokenList();
-	const {address} = useWeb3();
-	const {chainID} = useChainID();
+	const {chainID, address} = useWeb3();
 	const {value: extraTokens, set: saveExtraTokens} = useLocalStorageValue<TTokenList['tokens']>('extraTokens', {
 		defaultValue: []
 	});
