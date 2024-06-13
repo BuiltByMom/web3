@@ -1,6 +1,6 @@
 {
   "name": "@builtbymom/web3",
-  "version": "0.0.118",
+  "version": "0.0.119",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "private": false,
@@ -23,11 +23,11 @@
   },
   "dependencies": {
     "@clustersxyz/sdk": "^0.2.1",
-    "@rainbow-me/rainbowkit": "^2.1.1",
+    "@rainbow-me/rainbowkit": "^2.1.2",
     "@react-hookz/web": "^24.0.4",
-    "@tanstack/react-query": "^5.40.0",
+    "@tanstack/react-query": "^5.45.0",
     "@total-typescript/ts-reset": "^0.5.1",
-    "@wagmi/core": "^2.10.4",
+    "@wagmi/core": "^2.11.2",
     "bun-types": "^1.1.7",
     "ethers": "5.7.2",
     "eventemitter3": "^5.0.1",
@@ -36,8 +36,8 @@
     "prettier": "^3.2.5",
     "react-hot-toast": "2.4.1",
     "swr": "^2.2.5",
-    "viem": "^2.13.1",
-    "wagmi": "^2.9.7",
+    "viem": "^2.13.10",
+    "wagmi": "^2.10.2",
     "xxhashjs": "^0.2.2",
     "zod": "^3.23.8"
   },

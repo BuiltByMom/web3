@@ -118,7 +118,6 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		chain.rpcUrls.default.http = [...availableRPCs, ...(chain.rpcUrls.default.http || [])];
 		chain.rpcUrls.default.webSocket = [wsURI, ...(chain.rpcUrls.default.webSocket || [])];
 	}
-	console.log(chains);
 
 	CONFIG = config;
 	return config;
