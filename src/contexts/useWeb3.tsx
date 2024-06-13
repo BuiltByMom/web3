@@ -9,7 +9,7 @@ import {
 	useSwitchChain,
 	useWalletClient
 } from 'wagmi';
-import {Clusters} from '@clustersxyz/sdk';
+import {Clusters, getImageUrl} from '@clustersxyz/sdk';
 import {useAccountModal, useChainModal, useConnectModal} from '@rainbow-me/rainbowkit';
 import {useIsMounted, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 
@@ -28,7 +28,7 @@ type TWeb3Context = {
 	address: TAddress | undefined;
 	ens: string | undefined;
 	lensProtocolHandle: string | undefined;
-	clustersName: string | undefined;
+	clusters: {name: string; avatar: string} | undefined;
 	chainID: number;
 	isDisconnected: boolean;
 	isActive: boolean;
@@ -47,7 +47,7 @@ const defaultState: TWeb3Context = {
 	address: undefined,
 	ens: undefined,
 	lensProtocolHandle: undefined,
-	clustersName: undefined,
+	clusters: undefined,
 	chainID: 1,
 	isDisconnected: false,
 	isActive: false,
@@ -76,7 +76,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 	const {openAccountModal} = useAccountModal();
 	const {openConnectModal} = useConnectModal();
 	const {openChainModal} = useChainModal();
-	const [clustersName, set_clustersName] = useState<string | undefined>(undefined);
+	const [clusters, set_clusters] = useState<{name: string; avatar: string} | undefined>(undefined);
 
 	const supportedChainsID = useMemo((): number[] => {
 		connectors; //Hard trigger re-render when connectors change
@@ -180,9 +180,12 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 			const clustersTag = await clusters.getName(address);
 			if (clustersTag) {
 				const [clustersName] = clustersTag.split('/');
-				set_clustersName(clustersName);
+				const profileImage = getImageUrl(clustersName);
+				set_clusters({name: clustersName, avatar: profileImage});
+				return;
 			}
 		}
+		set_clusters(undefined);
 	}, [address]);
 
 	const contextValue = {
@@ -190,7 +193,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 		isConnecting,
 		isDisconnected,
 		ens: ensName || '',
-		clustersName,
+		clusters,
 		isActive: isConnected && [...supportedChainsID, 1337].includes(chain?.id || -1) && isMounted(),
 		isWalletSafe: connector?.id === 'safe' || (connector as any)?._wallets?.[0]?.id === 'safe',
 		isWalletLedger:
