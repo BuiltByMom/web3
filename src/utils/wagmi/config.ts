@@ -64,12 +64,12 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			if (getNetwork(chain.id)?.defaultRPC) {
 				availableTransports.push(http(getNetwork(chain.id)?.defaultRPC));
 			}
-			if (getNetwork(chain.id)?.rpcUrls['alchemy'].http[0] && process.env.ALCHEMY_KEY) {
+			if (getNetwork(chain.id)?.rpcUrls['alchemy']?.http[0] && process.env.ALCHEMY_KEY) {
 				availableTransports.push(
 					http(`${getNetwork(chain.id)?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`)
 				);
 			}
-			if (getNetwork(chain.id)?.rpcUrls['infura'].http[0] && process.env.INFURA_PROJECT_ID) {
+			if (getNetwork(chain.id)?.rpcUrls['infura']?.http[0] && process.env.INFURA_PROJECT_ID) {
 				availableTransports.push(
 					http(`${getNetwork(chain.id)?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`)
 				);
@@ -109,13 +109,16 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		if (injectedRPC) {
 			availableRPCs.push(injectedRPC);
 		}
-		if (chain?.rpcUrls['alchemy'].http[0] && process.env.ALCHEMY_KEY) {
+		if (chain?.rpcUrls['alchemy']?.http[0] && process.env.ALCHEMY_KEY) {
 			availableRPCs.push(`${chain?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`);
 		}
-		if (chain?.rpcUrls['infura'].http[0] && process.env.INFURA_PROJECT_ID) {
+		if (chain?.rpcUrls['infura']?.http[0] && process.env.INFURA_PROJECT_ID) {
 			availableRPCs.push(`${chain?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`);
 		}
-		chain.rpcUrls.default.http = [...availableRPCs, ...(chain.rpcUrls.default.http || [])];
+		if (!chain.rpcUrls.default) {
+			chain.rpcUrls.default = {http: [], webSocket: []};
+		}
+		chain.rpcUrls.default.http = [...availableRPCs, ...(chain.rpcUrls.default?.http || [])];
 		chain.rpcUrls.default.webSocket = [wsURI, ...(chain.rpcUrls.default.webSocket || [])];
 	}
 
