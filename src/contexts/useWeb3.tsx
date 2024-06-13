@@ -9,9 +9,12 @@ import {
 	useSwitchChain,
 	useWalletClient
 } from 'wagmi';
+import {Clusters} from '@clustersxyz/sdk';
 import {useAccountModal, useChainModal, useConnectModal} from '@rainbow-me/rainbowkit';
 import {useIsMounted, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 
+import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
+import {isAddress} from '../utils';
 import {isIframe} from '../utils/helpers';
 import {toAddress} from '../utils/tools.address';
 import {retrieveConfig} from '../utils/wagmi';
@@ -25,6 +28,7 @@ type TWeb3Context = {
 	address: TAddress | undefined;
 	ens: string | undefined;
 	lensProtocolHandle: string | undefined;
+	clustersName: string | undefined;
 	chainID: number;
 	isDisconnected: boolean;
 	isActive: boolean;
@@ -43,6 +47,7 @@ const defaultState: TWeb3Context = {
 	address: undefined,
 	ens: undefined,
 	lensProtocolHandle: undefined,
+	clustersName: undefined,
 	chainID: 1,
 	isDisconnected: false,
 	isActive: false,
@@ -71,6 +76,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 	const {openAccountModal} = useAccountModal();
 	const {openConnectModal} = useConnectModal();
 	const {openChainModal} = useChainModal();
+	const [clustersName, set_clustersName] = useState<string | undefined>(undefined);
 
 	const supportedChainsID = useMemo((): number[] => {
 		connectors; //Hard trigger re-render when connectors change
@@ -168,11 +174,23 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 		openConnectModal
 	]);
 
+	useAsyncTrigger(async (): Promise<void> => {
+		if (isAddress(address)) {
+			const clusters = new Clusters();
+			const clustersTag = await clusters.getName(address);
+			if (clustersTag) {
+				const [clustersName] = clustersTag.split('/');
+				set_clustersName(clustersName);
+			}
+		}
+	}, [address]);
+
 	const contextValue = {
 		address: address ? toAddress(address) : undefined,
 		isConnecting,
 		isDisconnected,
 		ens: ensName || '',
+		clustersName,
 		isActive: isConnected && [...supportedChainsID, 1337].includes(chain?.id || -1) && isMounted(),
 		isWalletSafe: connector?.id === 'safe' || (connector as any)?._wallets?.[0]?.id === 'safe',
 		isWalletLedger:
