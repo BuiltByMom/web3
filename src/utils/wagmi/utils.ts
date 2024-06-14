@@ -101,6 +101,7 @@ function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 			extendedChain.defaultRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL || '';
 			extendedChain.rpcUrls['alchemy'] = {http: [getAlchemyBaseURL(extendedChain.id)]};
 			extendedChain.rpcUrls['infura'] = {http: [getInfuraBaseURL(extendedChain.id)]};
+			extendedChain.rpcUrls.default.http = [extendedChain.defaultRPC, ...extendedChain.rpcUrls.default.http];
 			extendedChain.defaultBlockExplorer =
 				extendedChain.blockExplorers?.etherscan?.url ||
 				extendedChain.blockExplorers?.default.url ||
