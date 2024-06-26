@@ -10,22 +10,37 @@ import {WithTokenList} from './WithTokenList';
 import type {ReactElement} from 'react';
 import type {Chain} from 'viem';
 import type {Config} from 'wagmi';
+import type {AvatarComponent, DisclaimerComponent, Theme} from '@rainbow-me/rainbowkit';
 
 type TWithMom = {
 	children: ReactElement;
 	defaultNetwork?: Chain;
 	supportedChains: Chain[];
 	tokenLists?: string[];
+	rainbowConfig?: {
+		initialChain?: Chain | number;
+		id?: string;
+		theme?: Theme | null;
+		showRecentTransactions?: boolean;
+		appInfo?: {
+			appName?: string;
+			learnMoreUrl?: string;
+			disclaimer?: DisclaimerComponent;
+		};
+		coolMode?: boolean;
+		avatar?: AvatarComponent;
+		modalSize?: 'compact' | 'wide';
+	};
 };
 
 const queryClient = new QueryClient();
-function WithMom({children, supportedChains, defaultNetwork, tokenLists}: TWithMom): ReactElement {
+function WithMom({children, supportedChains, defaultNetwork, tokenLists, rainbowConfig}: TWithMom): ReactElement {
 	const config = useMemo((): Config => getConfig({chains: supportedChains}), [supportedChains]);
 
 	return (
 		<WagmiProvider config={config}>
 			<QueryClientProvider client={queryClient}>
-				<RainbowKitProvider>
+				<RainbowKitProvider {...rainbowConfig}>
 					<Web3ContextApp defaultNetwork={defaultNetwork}>
 						<WithTokenList lists={tokenLists}>
 							<>{children}</>
