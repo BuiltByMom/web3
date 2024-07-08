@@ -159,7 +159,7 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		if (!chain.rpcUrls.default) {
 			chain.rpcUrls.default = {http: [], webSocket: []};
 		}
-		const defaultHttp = [...new Set(...[...availableRPCs, ...(chain.rpcUrls.default?.http || [])].filter(Boolean))];
+		const defaultHttp = [...new Set([...availableRPCs, ...(chain.rpcUrls.default?.http || [])].filter(Boolean))];
 		const defaultWebSocket = [...new Set([wsURI, ...(chain.rpcUrls.default.webSocket || [])].filter(Boolean))];
 		chain.rpcUrls.default.http = defaultHttp;
 		chain.rpcUrls.default.webSocket = defaultWebSocket;
