@@ -23,9 +23,6 @@ let CONFIG: Config | undefined = undefined;
 
 type TTransport = {[key: number]: Transport};
 export function getConfig({chains}: {chains: Chain[]}): Config {
-	if (CONFIG) {
-		return CONFIG;
-	}
 	const config = getDefaultConfig({
 		appName: (process.env.WALLETCONNECT_PROJECT_NAME as string) || '',
 		projectId: process.env.WALLETCONNECT_PROJECT_ID as string,
