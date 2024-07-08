@@ -56,7 +56,7 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		const newRPCBugged = process.env[`RPC_URI_FOR_${chain.id}`];
 		const oldRPC = process.env.JSON_RPC_URI?.[chain.id] || process.env.JSON_RPC_URL?.[chain.id];
 		const defaultJsonRPCURL = chain?.rpcUrls?.public?.http?.[0];
-		const envRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL || '';
+		const envRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL;
 		if (envRPC) {
 			availableTransports.push(http(envRPC, {batch: true}));
 		}
@@ -159,8 +159,10 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		if (!chain.rpcUrls.default) {
 			chain.rpcUrls.default = {http: [], webSocket: []};
 		}
-		chain.rpcUrls.default.http = [...availableRPCs, ...(chain.rpcUrls.default?.http || [])];
-		chain.rpcUrls.default.webSocket = [wsURI, ...(chain.rpcUrls.default.webSocket || [])];
+		const defaultHttp = [...new Set(...[...availableRPCs, ...(chain.rpcUrls.default?.http || [])].filter(Boolean))];
+		const defaultWebSocket = [...new Set([wsURI, ...(chain.rpcUrls.default.webSocket || [])].filter(Boolean))];
+		chain.rpcUrls.default.http = defaultHttp;
+		chain.rpcUrls.default.webSocket = defaultWebSocket;
 	}
 
 	CONFIG = config;
