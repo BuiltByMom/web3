@@ -387,8 +387,12 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			}
 
 			const updated: TChainTokens = {};
+			const chainIDs = retrieveConfig().chains.map(({id}) => id);
 			for (const [chainIDStr, tokens] of Object.entries(tokensPerChainID)) {
 				const chainID = Number(chainIDStr);
+				if (!chainIDs.includes(chainID)) {
+					continue;
+				}
 
 				const chunks = [];
 				for (let i = 0; i < tokens.length; i += 200) {
@@ -480,8 +484,12 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			}
 
 			const updated: TChainTokens = {};
+			const chainIDs = retrieveConfig().chains.map(({id}) => id);
 			for (const [chainIDStr, tokens] of Object.entries(tokensPerChainID)) {
 				const chainID = Number(chainIDStr);
+				if (!chainIDs.includes(chainID)) {
+					continue;
+				}
 
 				const chunks = [];
 				for (let i = 0; i < tokens.length; i += 200) {
@@ -606,8 +614,12 @@ export function useBalances(props?: TUseBalancesReq): TUseBalancesRes {
 			}
 		}
 
+		const chainIDs = retrieveConfig().chains.map(({id}) => id);
 		for (const [chainIDStr, tokens] of Object.entries(tokensPerChainID)) {
 			const chainID = Number(chainIDStr);
+			if (!chainIDs.includes(chainID)) {
+				continue;
+			}
 			if (props?.priorityChainID && chainID === props.priorityChainID) {
 				continue;
 			}
