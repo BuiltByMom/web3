@@ -20,6 +20,8 @@ import type {Chain} from 'viem/chains';
 import type {_chains} from '@rainbow-me/rainbowkit/dist/config/getDefaultConfig';
 
 let CONFIG: Config | undefined = undefined;
+let CONFIG_CHAINS: Chain[] = [];
+let CONFIG_WITH_WINDOW: boolean = false;
 
 type TTransport = {[key: number]: Transport};
 export function getConfig({chains}: {chains: Chain[]}): Config {
@@ -105,13 +107,22 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 				availableTransports.push(webSocket(wsURI));
 			}
 
-			acc[chain.id] = fallback([
-				unstable_connector(safe),
-				custom(window.ethereum!),
-				unstable_connector(injected),
-				...availableTransports,
-				http()
-			]);
+			if (typeof window !== 'undefined') {
+				acc[chain.id] = fallback([
+					unstable_connector(safe),
+					custom(window.ethereum!),
+					unstable_connector(injected),
+					...availableTransports,
+					http()
+				]);
+			} else {
+				acc[chain.id] = fallback([
+					unstable_connector(safe),
+					unstable_connector(injected),
+					...availableTransports,
+					http()
+				]);
+			}
 			return acc;
 		}, {})
 	});
@@ -151,12 +162,17 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 	}
 
 	CONFIG = config;
+	CONFIG_WITH_WINDOW = typeof window !== 'undefined';
+	CONFIG_CHAINS = chains;
 	return config;
 }
 
 export function retrieveConfig(): Config {
-	if (CONFIG) {
+	if (CONFIG && CONFIG_WITH_WINDOW) {
 		return CONFIG;
+	}
+	if (!CONFIG_WITH_WINDOW) {
+		return getConfig({chains: CONFIG_CHAINS});
 	}
 	throw new Error('Config not set');
 }
