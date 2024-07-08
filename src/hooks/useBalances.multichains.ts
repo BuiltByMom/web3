@@ -88,10 +88,27 @@ export async function performCall(
 	tokens: TUseBalancesTokens[],
 	ownerAddress: TAddress
 ): Promise<[TDict<TToken>, Error | undefined]> {
-	const results = await multicall(retrieveConfig(), {
-		contracts: chunckCalls as never[],
-		chainId: chainID
-	});
+	let results: (
+		| {
+				error?: undefined;
+				result: never;
+				status: 'success';
+		  }
+		| {
+				error: Error;
+				result?: undefined;
+				status: 'failure';
+		  }
+	)[] = [];
+	try {
+		results = await multicall(retrieveConfig(), {
+			contracts: chunckCalls as never[],
+			chainId: chainID
+		});
+	} catch (error) {
+		console.error(`Failed to trigger multicall on chain ${chainID}`, error);
+		return [{}, error as Error];
+	}
 
 	const _data: TDict<TToken> = {};
 	const hasOwnerAddress = Boolean(ownerAddress) && !isZeroAddress(ownerAddress);
