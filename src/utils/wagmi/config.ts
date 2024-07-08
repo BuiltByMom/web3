@@ -1,4 +1,5 @@
-import {createStorage} from 'wagmi';
+/* eslint-disable @typescript-eslint/naming-convention */
+import {type Chain} from 'viem/chains';
 import {safe} from 'wagmi/connectors';
 import {getDefaultConfig} from '@rainbow-me/rainbowkit';
 import {
@@ -10,13 +11,12 @@ import {
 	safeWallet,
 	walletConnectWallet
 } from '@rainbow-me/rainbowkit/wallets';
-import {custom, fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
+import {custom, fallback, http, injected, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
 import {getNetwork} from './utils';
 
 import type {Transport} from 'viem';
-import type {Chain} from 'viem/chains';
 import type {_chains} from '@rainbow-me/rainbowkit/dist/config/getDefaultConfig';
 
 let CONFIG: Config | undefined = undefined;
@@ -25,6 +25,84 @@ let CONFIG_WITH_WINDOW: boolean = false;
 
 type TTransport = {[key: number]: Transport};
 export function getConfig({chains}: {chains: Chain[]}): Config {
+	const transports: TTransport = {};
+	for (const chain of chains) {
+		/**************************************************************************************
+		 ** Assign the WS URI
+		 *************************************************************************************/
+		let wsURI = getNetwork(chain.id)?.defaultRPC;
+		if (wsURI.startsWith('nd-')) {
+			wsURI = wsURI.replace('nd-', 'ws-nd-');
+		}
+		if (wsURI.startsWith('infura.io')) {
+			wsURI = wsURI.replace('v3', 'ws/v3');
+		}
+		if (wsURI.startsWith('chainstack.com')) {
+			wsURI = 'ws' + wsURI;
+		}
+
+		/**************************************************************************************
+		 ** Assign the default transport configured for that chain
+		 *************************************************************************************/
+		const availableTransports: Transport[] = [];
+		if (getNetwork(chain.id)?.defaultRPC) {
+			availableTransports.push(http(getNetwork(chain.id)?.defaultRPC, {batch: true}));
+		}
+
+		/**************************************************************************************
+		 ** Assign the transport via the env variables
+		 *************************************************************************************/
+		const newRPC = process.env.RPC_URI_FOR?.[chain.id] || '';
+		const newRPCBugged = process.env[`RPC_URI_FOR_${chain.id}`];
+		const oldRPC = process.env.JSON_RPC_URI?.[chain.id] || process.env.JSON_RPC_URL?.[chain.id];
+		const defaultJsonRPCURL = chain?.rpcUrls?.public?.http?.[0];
+		const envRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL || '';
+		if (envRPC) {
+			availableTransports.push(http(envRPC, {batch: true}));
+		}
+		/**************************************************************************************
+		 ** Assign the transport via the alchemy and infura keys
+		 *************************************************************************************/
+		if (getNetwork(chain.id)?.rpcUrls['alchemy']?.http[0] && process.env.ALCHEMY_KEY) {
+			availableTransports.push(
+				http(`${getNetwork(chain.id)?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`, {
+					batch: true
+				})
+			);
+		}
+		if (getNetwork(chain.id)?.rpcUrls['infura']?.http[0] && process.env.INFURA_PROJECT_ID) {
+			availableTransports.push(
+				http(`${getNetwork(chain.id)?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`, {
+					batch: true
+				})
+			);
+		}
+
+		/**************************************************************************************
+		 ** Append the websocket transport
+		 *************************************************************************************/
+		if (wsURI) {
+			availableTransports.push(webSocket(wsURI));
+		}
+
+		if (typeof window !== 'undefined') {
+			transports[chain.id] = fallback([
+				unstable_connector(safe),
+				custom(window.ethereum!),
+				unstable_connector(injected),
+				...availableTransports,
+				http()
+			]);
+		} else {
+			transports[chain.id] = fallback([
+				unstable_connector(safe),
+				unstable_connector(injected),
+				...availableTransports,
+				http()
+			]);
+		}
+	}
+
 	const config = getDefaultConfig({
 		appName: (process.env.WALLETCONNECT_PROJECT_NAME as string) || '',
 		projectId: process.env.WALLETCONNECT_PROJECT_ID as string,
@@ -44,87 +122,11 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 				]
 			}
 		],
-		storage: createStorage({
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-			storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
-		}),
-		transports: chains.reduce((acc: TTransport, chain) => {
-			/**************************************************************************************
-			 ** Assign the WS URI
-			 *************************************************************************************/
-			let wsURI = getNetwork(chain.id)?.defaultRPC;
-			if (wsURI.startsWith('nd-')) {
-				wsURI = wsURI.replace('nd-', 'ws-nd-');
-			}
-			if (wsURI.startsWith('infura.io')) {
-				wsURI = wsURI.replace('v3', 'ws/v3');
-			}
-			if (wsURI.startsWith('chainstack.com')) {
-				wsURI = 'ws' + wsURI;
-			}
-
-			/**************************************************************************************
-			 ** Assign the default transport configured for that chain
-			 *************************************************************************************/
-			const availableTransports: Transport[] = [];
-			if (getNetwork(chain.id)?.defaultRPC) {
-				availableTransports.push(http(getNetwork(chain.id)?.defaultRPC, {batch: true}));
-			}
-
-			/**************************************************************************************
-			 ** Assign the transport via the env variables
-			 *************************************************************************************/
-			const newRPC = process.env.RPC_URI_FOR?.[chain.id] || '';
-			const newRPCBugged = process.env[`RPC_URI_FOR_${chain.id}`];
-			const oldRPC = process.env.JSON_RPC_URI?.[chain.id] || process.env.JSON_RPC_URL?.[chain.id];
-			const defaultJsonRPCURL = chain?.rpcUrls?.public?.http?.[0];
-			const envRPC = newRPC || oldRPC || newRPCBugged || defaultJsonRPCURL || '';
-			if (envRPC) {
-				availableTransports.push(http(envRPC, {batch: true}));
-			}
-			/**************************************************************************************
-			 ** Assign the transport via the alchemy and infura keys
-			 *************************************************************************************/
-			if (getNetwork(chain.id)?.rpcUrls['alchemy']?.http[0] && process.env.ALCHEMY_KEY) {
-				availableTransports.push(
-					http(`${getNetwork(chain.id)?.rpcUrls['alchemy'].http[0]}/${process.env.ALCHEMY_KEY}`, {
-						batch: true
-					})
-				);
-			}
-			if (getNetwork(chain.id)?.rpcUrls['infura']?.http[0] && process.env.INFURA_PROJECT_ID) {
-				availableTransports.push(
-					http(`${getNetwork(chain.id)?.rpcUrls['infura'].http[0]}/${process.env.INFURA_PROJECT_ID}`, {
-						batch: true
-					})
-				);
-			}
-
-			/**************************************************************************************
-			 ** Append the websocket transport
-			 *************************************************************************************/
-			if (wsURI) {
-				availableTransports.push(webSocket(wsURI));
-			}
-
-			if (typeof window !== 'undefined') {
-				acc[chain.id] = fallback([
-					unstable_connector(safe),
-					custom(window.ethereum!),
-					unstable_connector(injected),
-					...availableTransports,
-					http()
-				]);
-			} else {
-				acc[chain.id] = fallback([
-					unstable_connector(safe),
-					unstable_connector(injected),
-					...availableTransports,
-					http()
-				]);
-			}
-			return acc;
-		}, {})
+		// storage: createStorage({
+		// 	// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+		// 	storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
+		// }),
+		transports: transports
 	});
 
 	for (const chain of config.chains) {
