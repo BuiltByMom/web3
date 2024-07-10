@@ -11,7 +11,7 @@ import {
 	safeWallet,
 	walletConnectWallet
 } from '@rainbow-me/rainbowkit/wallets';
-import {createStorage, custom, fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
+import {createStorage, fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
 import {getNetwork} from './utils';
@@ -85,22 +85,28 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			availableTransports.push(webSocket(wsURI));
 		}
 
-		if (typeof window !== 'undefined') {
-			transports[chain.id] = fallback([
-				unstable_connector(safe),
-				custom(window.ethereum!),
-				unstable_connector(injected),
-				...availableTransports,
-				http()
-			]);
-		} else {
-			transports[chain.id] = fallback([
-				unstable_connector(safe),
-				unstable_connector(injected),
-				...availableTransports,
-				http()
-			]);
-		}
+		// if (typeof window !== 'undefined') {
+		// 	transports[chain.id] = fallback([
+		// 		unstable_connector(safe),
+		// 		custom(window.ethereum!),
+		// 		unstable_connector(injected),
+		// 		...availableTransports,
+		// 		http()
+		// 	]);
+		// } else {
+		// 	transports[chain.id] = fallback([
+		// 		unstable_connector(safe),
+		// 		unstable_connector(injected),
+		// 		...availableTransports,
+		// 		http()
+		// 	]);
+		// }
+		transports[chain.id] = fallback([
+			unstable_connector(safe),
+			unstable_connector(injected),
+			...availableTransports,
+			http()
+		]);
 	}
 
 	const config = getDefaultConfig({
@@ -166,7 +172,7 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 	}
 
 	CONFIG = config;
-	CONFIG_WITH_WINDOW = typeof window !== 'undefined';
+	CONFIG_WITH_WINDOW = true; //typeof window !== 'undefined';
 	CONFIG_CHAINS = chains;
 	return config;
 }
