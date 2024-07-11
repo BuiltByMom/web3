@@ -88,9 +88,9 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		if (typeof window !== 'undefined') {
 			transports[chain.id] = fallback([
 				unstable_connector(safe),
+				...availableTransports,
 				custom(window.ethereum!),
 				unstable_connector(injected),
-				...availableTransports,
 				http()
 			]);
 		} else {
