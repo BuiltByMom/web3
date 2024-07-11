@@ -96,8 +96,8 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 		} else {
 			transports[chain.id] = fallback([
 				unstable_connector(safe),
-				unstable_connector(injected),
 				...availableTransports,
+				unstable_connector(injected),
 				http()
 			]);
 		}
