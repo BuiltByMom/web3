@@ -85,7 +85,7 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			availableTransports.push(webSocket(wsURI));
 		}
 
-		if (typeof window !== 'undefined') {
+		if (typeof window !== 'undefined' && window.ethereum) {
 			transports[chain.id] = fallback([
 				unstable_connector(safe),
 				...availableTransports,
