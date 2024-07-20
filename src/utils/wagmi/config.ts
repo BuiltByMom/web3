@@ -21,7 +21,7 @@ import type {_chains} from '@rainbow-me/rainbowkit/dist/config/getDefaultConfig'
 
 let CONFIG: Config | undefined = undefined;
 let CONFIG_CHAINS: Chain[] = [];
-let CONFIG_WITH_WINDOW: boolean = false;
+let CONFIG_WITH_WINDOW: boolean = true;
 
 type TTransport = {[key: number]: Transport};
 export function getConfig({chains}: {chains: Chain[]}): Config {
@@ -85,12 +85,13 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 			availableTransports.push(webSocket(wsURI));
 		}
 
-		if (typeof window !== 'undefined' && window.ethereum) {
+		const shouldUseWindowInjected = false;
+		if (typeof window !== 'undefined' && window.ethereum && shouldUseWindowInjected) {
 			transports[chain.id] = fallback([
 				unstable_connector(safe),
 				...availableTransports,
-				custom(window.ethereum!),
 				unstable_connector(injected),
+				custom(window.ethereum!),
 				http()
 			]);
 		} else {
