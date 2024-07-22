@@ -401,7 +401,7 @@ export function formatWithUnit(
 }
 
 export function formatUSD(n: number, min = 2, max = 2): string {
-	return `$ ${formatAmount(n || 0, min, max)}`;
+	return `$${formatAmount(n || 0, min, max)}`;
 }
 
 export function formatPercent(n: number, min = 2, max = 2, upperLimit = 500): string {
