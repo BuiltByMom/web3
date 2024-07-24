@@ -1,4 +1,4 @@
-import {createPublicClient, http} from 'viem';
+import {createPublicClient, defineChain, http} from 'viem';
 import * as wagmiChains from 'viem/chains';
 
 import {retrieveConfig} from './config';
@@ -12,6 +12,34 @@ export type TChainContract = {
 	address: TAddress;
 	blockCreated?: number;
 };
+
+/*************************************************************************************************
+ ** The RARI chain is not available on the Viem library wet, so we define it here manually.
+ ** An existing Rejected PR can be consulted here: https://github.com/wevm/viem/pull/1741
+ *************************************************************************************************/
+const rari = defineChain({
+	id: 1380012617,
+	name: 'RARI Chain',
+	nativeCurrency: {name: 'Ether', symbol: 'ETH', decimals: 18},
+	rpcUrls: {
+		default: {
+			http: ['https://mainnet.rpc.rarichain.org/http']
+		}
+	},
+	blockExplorers: {
+		default: {
+			name: 'RARI chain explorer',
+			url: 'https://mainnet.explorer.rarichain.org/',
+			apiUrl: 'https://mainnet.explorer.rarichain.org/api'
+		}
+	},
+	contracts: {
+		multicall3: {
+			address: '0xb6D5B39F96d379569d47cC84024f3Cd78c5Ef651',
+			blockCreated: 0
+		}
+	}
+});
 
 /***************************************************************************************************
  ** Extended Chain type is used to add additional properties to the basic wagmi Chain type.
@@ -74,7 +102,7 @@ function getInfuraBaseURL(chainID: number): string {
 
 function initIndexedWagmiChains(): TNDict<TExtendedChain> {
 	const _indexedWagmiChains: TNDict<TExtendedChain> = {};
-	for (const chain of Object.values(wagmiChains)) {
+	for (const chain of Object.values({...wagmiChains, rari})) {
 		if (isChain(chain)) {
 			let extendedChain = chain as unknown as TExtendedChain;
 			if (extendedChain.id === 1337) {
@@ -117,7 +145,8 @@ export const indexedWagmiChains: TNDict<TExtendedChain> = initIndexedWagmiChains
 
 export function getNetwork(chainID: number): TExtendedChain {
 	if (!indexedWagmiChains[chainID]) {
-		throw new Error(`Chain ${chainID} is not supported`);
+		console.error(`Chain ${chainID} is not supported`);
+		return {} as TExtendedChain;
 	}
 	return indexedWagmiChains[chainID];
 }
