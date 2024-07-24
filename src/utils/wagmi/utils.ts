@@ -146,7 +146,25 @@ export const indexedWagmiChains: TNDict<TExtendedChain> = initIndexedWagmiChains
 export function getNetwork(chainID: number): TExtendedChain {
 	if (!indexedWagmiChains[chainID]) {
 		console.error(`Chain ${chainID} is not supported`);
-		return {} as TExtendedChain;
+		return {
+			id: chainID,
+			name: `Network ${chainID}`,
+			nativeCurrency: {name: 'Ether', symbol: 'ETH', decimals: 18},
+			defaultRPC: '',
+			defaultBlockExplorer: '',
+			contracts: {},
+			rpcUrls: {
+				default: {
+					http: []
+				}
+			},
+			blockExplorers: {
+				default: {
+					name: '',
+					url: ''
+				}
+			}
+		} as TExtendedChain;
 	}
 	return indexedWagmiChains[chainID];
 }
