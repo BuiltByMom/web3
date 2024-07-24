@@ -66,7 +66,7 @@ const Web3Context = createContext<TWeb3Context>(defaultState);
 export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: Chain}): ReactElement => {
 	const {address, isConnecting, isConnected, isDisconnected, connector, chain} = useAccount();
 	const {connectors, connectAsync} = useConnect();
-	const {disconnect} = useDisconnect();
+	const {disconnect, disconnectAsync} = useDisconnect();
 	const {switchChain} = useSwitchChain();
 	const {data: ensName} = useEnsName({address: address, chainId: mainnet.id});
 	const {data: walletClient} = useWalletClient();
@@ -98,6 +98,34 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 			}
 		}
 	});
+
+	useAsyncTrigger(async () => {
+		if (typeof window === 'undefined') {
+			return;
+		}
+
+		if (isIframe() && connector && connector?.id !== 'safe' && connector?.id !== 'ledgerLive') {
+			const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
+			if (!ancestorOrigin.toString().includes('safe')) {
+				const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+				if (ledgerConnector) {
+					await disconnectAsync({connector: connector});
+					const isAuth = await ledgerConnector.isAuthorized();
+					if (!isAuth) {
+						await connectAsync({connector: ledgerConnector});
+					}
+				}
+			}
+			const safeConnector = connectors.find((c): boolean => c.id === 'safe');
+			if (safeConnector) {
+				await disconnectAsync({connector: connector});
+				const isAuth = await safeConnector.isAuthorized();
+				if (!isAuth) {
+					await connectAsync({connector: safeConnector});
+				}
+			}
+		}
+	}, [connectAsync, connectors, disconnectAsync, connector]);
 
 	const onConnect = useCallback(async (): Promise<void> => {
 		const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
