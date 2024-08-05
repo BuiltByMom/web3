@@ -19,7 +19,7 @@ type TUseApproveArgs = {
 	chainID: number; // Chain ID
 } & (
 	| {
-			shouldUsePermit: true; // Should use permit or not
+			shouldUsePermit: boolean; // Should use permit or not
 			deadline: number; // Deadline for the permit
 	  }
 	| {
