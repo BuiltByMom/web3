@@ -20,7 +20,7 @@ type TUseApproveArgs = {
 } & (
 	| {
 			shouldUsePermit: true; // Should use permit or not
-			deadline: bigint; // Deadline for the permit
+			deadline: number; // Deadline for the permit
 	  }
 	| {
 			shouldUsePermit: false; // Should use permit or not
@@ -130,7 +130,7 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 						ownerAddress: args.owner,
 						spenderAddress: args.spender,
 						value: args.amountToApprove,
-						deadline: args.deadline,
+						deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * args.deadline), // args.deadline minutes,
 						chainID: args.chainID
 					});
 
