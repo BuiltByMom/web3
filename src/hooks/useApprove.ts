@@ -2,7 +2,7 @@ import {useCallback, useMemo, useState} from 'react';
 import {erc20Abi, maxUint128} from 'viem';
 import {useReadContract} from 'wagmi';
 
-import {isAddress} from '../utils';
+import {isAddress, isEthAddress} from '../utils';
 import {approveERC20} from '../utils/wagmi';
 import {isSupportingPermit, signPermit} from './usePermit';
 
@@ -57,8 +57,13 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	 ** 1. args.tokenToApprove is a valid address
 	 ** 2. args.spender is a valid address
 	 ** 3. args.amountToApprove is greater than 0
+	 ** Nb: If args.tokenToApprove is an Ethereum address, then the token cannot be approved as
+	 **     it's not an erc20 contract
 	 *********************************************************************************************/
 	const canApprove = useMemo(() => {
+		if (isEthAddress(args.tokenToApprove)) {
+			return false;
+		}
 		return isAddress(args.tokenToApprove) && isAddress(args.spender) && args.amountToApprove > 0n;
 	}, [args.tokenToApprove, args.spender, args.amountToApprove]);
 
@@ -71,11 +76,14 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	 **    than or equal to args.amountToApprove
 	 *********************************************************************************************/
 	const isApproved = useMemo((): boolean => {
+		if (isEthAddress(args.tokenToApprove)) {
+			return true;
+		}
 		if (permitSignature && permitAllowance) {
 			return permitAllowance >= args.amountToApprove;
 		}
 		return (allowance && allowance >= args.amountToApprove) || false;
-	}, [allowance, args.amountToApprove, permitAllowance, permitSignature]);
+	}, [allowance, args.amountToApprove, args.tokenToApprove, permitAllowance, permitSignature]);
 
 	/**********************************************************************************************
 	 ** isInfiniteApproved is a boolean that is true if the token is approved with infinite
@@ -86,11 +94,14 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	 **    greater than or equal to maxUint128
 	 *********************************************************************************************/
 	const isInfiniteApproved = useMemo((): boolean => {
+		if (isEthAddress(args.tokenToApprove)) {
+			return true;
+		}
 		if (permitSignature && permitAllowance) {
 			return permitAllowance >= maxUint128;
 		}
 		return (allowance && allowance >= maxUint128) || false;
-	}, [allowance, permitAllowance, permitSignature]);
+	}, [allowance, args.tokenToApprove, permitAllowance, permitSignature]);
 
 	/**********************************************************************************************
 	 ** onApprove is a function that is called to approve the token. It takes two optional
@@ -115,7 +126,7 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	 *********************************************************************************************/
 	const onApprove = useCallback(
 		async (onSuccess?: () => void, onFailure?: () => void): Promise<void> => {
-			if (!canApprove) {
+			if (!canApprove || isEthAddress(args.tokenToApprove)) {
 				return;
 			}
 
