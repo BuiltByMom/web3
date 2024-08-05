@@ -35,6 +35,7 @@ type TUseApproveResp = {
 	isInfiniteApproved: boolean; // If the token is approved with infinite allowance
 	permitSignature?: TPermitSignature; // Signature for the permit,
 	onApprove: (onSuccess?: () => void, onFailure?: () => void) => Promise<void>; // Function to approve the token
+	onClearPermit: () => void; // Function to clear the permit
 };
 
 export function useApprove(args: TUseApproveArgs): TUseApproveResp {
@@ -178,12 +179,23 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 		]
 	);
 
+	/**********************************************************************************************
+	 ** onClearPermit is a function that is called to clear the permit. It performs the following
+	 ** steps:
+	 ** 1. Set permitSignature and permitAllowance to undefined
+	 *********************************************************************************************/
+	const onClearPermit = useCallback(() => {
+		set_permitSignature(undefined);
+		set_permitAllowance(undefined);
+	}, []);
+
 	return {
 		amountApproved: args.shouldUsePermit && permitSignature ? permitAllowance || allowance || 0n : allowance || 0n,
 		isApproving,
 		isApproved,
 		isInfiniteApproved,
 		permitSignature,
-		onApprove
+		onApprove,
+		onClearPermit
 	};
 }
