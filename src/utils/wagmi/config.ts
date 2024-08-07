@@ -6,6 +6,7 @@ import {
 	coinbaseWallet,
 	frameWallet,
 	injectedWallet,
+	ledgerWallet,
 	metaMaskWallet,
 	rainbowWallet,
 	safeWallet,
@@ -118,6 +119,7 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 					metaMaskWallet,
 					walletConnectWallet,
 					rainbowWallet,
+					ledgerWallet,
 					coinbaseWallet,
 					safeWallet
 				]
