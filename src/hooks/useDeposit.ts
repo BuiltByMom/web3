@@ -28,7 +28,7 @@ type TUseDepositArgs = {
 			version: 'ERC-4626';
 			options?:
 				| {
-						useRouter: true; // If a router should be used. Only supported router is the Yearn router
+						useRouter: boolean; // If a router should be used. Only supported router is the Yearn router
 						routerAddress: TAddress; // Address of the router
 						minOutSlippage: bigint; // Minimum slippage for the router in percentage (1 = 0.01%)
 						permitCalldata?: string; // Calldata for the permit
@@ -50,7 +50,7 @@ type TUseApproveResp = {
 	onDeposit: (onSuccess?: () => void, onFailure?: () => void) => Promise<void>; // Function to deposit the token
 };
 
-export function useERC4626Deposit(args: TUseDepositArgs): TUseApproveResp {
+export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 	const [isDepositing, set_isDepositing] = useState(false);
 
 	/**********************************************************************************************
