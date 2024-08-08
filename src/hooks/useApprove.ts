@@ -34,7 +34,7 @@ type TUseApproveResp = {
 	isApproved: boolean; // If the token is approved or not
 	isInfiniteApproved: boolean; // If the token is approved with infinite allowance
 	permitSignature?: TPermitSignature; // Signature for the permit,
-	onApprove: (onSuccess?: () => void, onFailure?: () => void) => Promise<void>; // Function to approve the token
+	onApprove: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to approve the token
 	onClearPermit: () => void; // Function to clear the permit
 };
 
@@ -125,9 +125,9 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	 ** 11. Set isApproving to false
 	 *********************************************************************************************/
 	const onApprove = useCallback(
-		async (onSuccess?: () => void, onFailure?: () => void): Promise<void> => {
+		async (onSuccess?: () => void, onFailure?: () => void): Promise<boolean> => {
 			if (!canApprove || isEthAddress(args.tokenToApprove)) {
-				return;
+				return false;
 			}
 
 			set_isApproving(true);
@@ -157,7 +157,7 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 					}
 					await refetch();
 					set_isApproving(false);
-					return;
+					return !!signature;
 				}
 			}
 
@@ -178,6 +178,7 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 
 			await refetch();
 			set_isApproving(false);
+			return result.isSuccessful;
 		},
 		[
 			args.amountToApprove,

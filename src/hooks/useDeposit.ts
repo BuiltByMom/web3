@@ -44,7 +44,7 @@ type TUseApproveResp = {
 	expectedOut: bigint; // Expected amount of the token after the deposit
 	canDeposit: boolean; // If the token can be deposited`
 	isDepositing: boolean; // If the approval is in progress
-	onDeposit: (onSuccess?: () => void, onFailure?: () => void) => Promise<void>; // Function to deposit the token
+	onDeposit: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to deposit the token
 };
 
 export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
@@ -159,16 +159,16 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 	 ** wants to use a router or not.
 	 *********************************************************************************************/
 	const onDeposit = useCallback(
-		async (onSuccess?: () => void, onFailure?: () => void): Promise<void> => {
+		async (onSuccess?: () => void, onFailure?: () => void): Promise<boolean> => {
 			if (!canDeposit) {
-				return;
+				return false;
 			}
 
 			set_isDepositing(true);
 			const wagmiProvider = await toWagmiProvider(args.provider);
 			if (!wagmiProvider || !isAddress(wagmiProvider.address)) {
 				set_isDepositing(false);
-				return;
+				return false;
 			}
 
 			/**********************************************************************************************
@@ -188,7 +188,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 				} else {
 					onFailure?.();
 				}
-				return;
+				return result.isSuccessful;
 			}
 
 			/**********************************************************************************************
@@ -266,23 +266,26 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 				} else {
 					onFailure?.();
 				}
-			} else {
-				const result = await depositToVault({
-					connector: args.provider,
-					chainID: args.chainID,
-					contractAddress: args.vault,
-					receiverAddress: isAddress(args.receiver) ? args.receiver : args.owner,
-					amount: args.amountToDeposit
-				});
-				if (result.isSuccessful) {
-					onSuccess?.();
-				} else {
-					onFailure?.();
-				}
+				await refetchMaxDepositForUser();
+				set_isDepositing(false);
+				return result.isSuccessful;
 			}
 
+			const result = await depositToVault({
+				connector: args.provider,
+				chainID: args.chainID,
+				contractAddress: args.vault,
+				receiverAddress: isAddress(args.receiver) ? args.receiver : args.owner,
+				amount: args.amountToDeposit
+			});
+			if (result.isSuccessful) {
+				onSuccess?.();
+			} else {
+				onFailure?.();
+			}
 			await refetchMaxDepositForUser();
 			set_isDepositing(false);
+			return result.isSuccessful;
 		},
 		[
 			args.amountToDeposit,
