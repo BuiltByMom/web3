@@ -5,6 +5,7 @@ import {readContract} from '@wagmi/core';
 
 import {isAddress, isEthAddress, toAddress} from '../utils';
 import {erc4626RouterAbi} from '../utils/abi/erc4626Router.abi';
+import {vaultAbi} from '../utils/abi/vaultV2.abi';
 import {depositTo4626VaultViaRouter, depositToVault, retrieveConfig, toWagmiProvider} from '../utils/wagmi';
 import {toBigInt} from './../utils/format';
 
@@ -85,22 +86,29 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 	});
 
 	/**********************************************************************************************
+	 ** The LEGACY version of the vaults no way to preview the deposit, so we will use the PPS
+	 ** value to simulate the effects of the deposit.
+	 *********************************************************************************************/
+	const {data: pricePerShare} = useReadContract({
+		address: args.vault,
+		abi: vaultAbi,
+		functionName: 'pricePerShare',
+		args: [],
+		chainId: args.chainID,
+		query: {
+			enabled: args.version === 'LEGACY'
+		}
+	});
+
+	/**********************************************************************************************
 	 ** The LEGACY version of the vaults has a method called availableDepositLimit: this function
 	 ** returns the maximum amount of underlying assets remaining to be deposited in the vault.
 	 ** We need this to be able to indicate to the user the maximum amount of tokens that can be
 	 ** deposited.
 	 *********************************************************************************************/
 	const {data: availableDepositLimit} = useReadContract({
-		address: args.tokenToDeposit,
-		abi: [
-			{
-				stateMutability: 'view',
-				type: 'function',
-				name: 'availableDepositLimit',
-				inputs: [],
-				outputs: [{name: '', type: 'uint256'}]
-			}
-		],
+		address: args.vault,
+		abi: vaultAbi,
 		functionName: 'availableDepositLimit',
 		args: [],
 		chainId: args.chainID,
@@ -108,6 +116,19 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			enabled: args.version === 'LEGACY'
 		}
 	});
+
+	/**********************************************************************************************
+	 ** expectedOut is the expected amount of the token after the deposit. It is calculated based
+	 ** on the price per share for the LEGACY version of the vaults and the previewDeposit for the
+	 ** ERC-4626 version of the vaults.
+	 *********************************************************************************************/
+	const expectedOut = useMemo(() => {
+		if (args.version === 'LEGACY') {
+			return toBigInt(pricePerShare) * args.amountToDeposit;
+		}
+
+		return toBigInt(previewDeposit);
+	}, [args.version, args.amountToDeposit, previewDeposit, pricePerShare]);
 
 	/**********************************************************************************************
 	 ** canDeposit is a boolean that is true if the token can be deposited. It can be deposited if
@@ -305,7 +326,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 
 	return {
 		maxDepositForUser: toBigInt(maxDepositForUser),
-		expectedOut: toBigInt(previewDeposit),
+		expectedOut: toBigInt(expectedOut),
 		canDeposit,
 		isDepositing,
 		onDeposit
