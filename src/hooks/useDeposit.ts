@@ -26,19 +26,12 @@ type TUseDepositArgs = {
 	  }
 	| {
 			version: 'ERC-4626';
-			options?:
-				| {
-						useRouter: boolean; // If a router should be used. Only supported router is the Yearn router
-						routerAddress: TAddress; // Address of the router
-						minOutSlippage: bigint; // Minimum slippage for the router in percentage (1 = 0.01%)
-						permitCalldata?: string; // Calldata for the permit
-				  }
-				| {
-						useRouter: false;
-						routerAddress?: undefined;
-						minOutSlippage?: undefined;
-						permitCalldata?: undefined;
-				  };
+			options?: {
+				useRouter: boolean; // If a router should be used. Only supported router is the Yearn router
+				routerAddress: TAddress; // Address of the router
+				minOutSlippage: bigint; // Minimum slippage for the router in percentage (1 = 0.01%)
+				permitCalldata?: string; // Calldata for the permit
+			};
 	  }
 );
 
@@ -201,7 +194,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			 ** Documentation about the router can be found here:
 			 ** https://github.com/yearn/Yearn-ERC4626-Router
 			 *********************************************************************************************/
-			if (args.options?.useRouter) {
+			if (args.options) {
 				if (args.options.minOutSlippage < 0n || args.options.minOutSlippage > 10000n) {
 					throw new Error('Invalid minOutSlippage');
 				}
@@ -277,10 +270,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 		[
 			args.amountToDeposit,
 			args.chainID,
-			args.options?.minOutSlippage,
-			args.options?.permitCalldata,
-			args.options?.routerAddress,
-			args.options?.useRouter,
+			args.options,
 			args.owner,
 			args.provider,
 			args.receiver,
