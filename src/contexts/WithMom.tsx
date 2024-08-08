@@ -1,6 +1,5 @@
 import {Fragment, useMemo} from 'react';
 import {WagmiProvider} from 'wagmi';
-import SafeProvider from '@gnosis.pm/safe-apps-react-sdk';
 import {RainbowKitProvider} from '@rainbow-me/rainbowkit';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
@@ -42,13 +41,11 @@ function WithMom({children, supportedChains, defaultNetwork, tokenLists, rainbow
 		<WagmiProvider config={config}>
 			<QueryClientProvider client={queryClient}>
 				<RainbowKitProvider {...rainbowConfig}>
-					<SafeProvider>
-						<Web3ContextApp defaultNetwork={defaultNetwork}>
-							<WithTokenList lists={tokenLists}>
-								<Fragment>{children}</Fragment>
-							</WithTokenList>
-						</Web3ContextApp>
-					</SafeProvider>
+					<Web3ContextApp defaultNetwork={defaultNetwork}>
+						<WithTokenList lists={tokenLists}>
+							<Fragment>{children}</Fragment>
+						</WithTokenList>
+					</Web3ContextApp>
 				</RainbowKitProvider>
 			</QueryClientProvider>
 		</WagmiProvider>
