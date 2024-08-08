@@ -157,8 +157,8 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 					}
 					await refetch();
 					set_isApproving(false);
+					return;
 				}
-				return;
 			}
 
 			const result = await approveERC20({
