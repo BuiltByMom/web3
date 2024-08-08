@@ -118,17 +118,31 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 	});
 
 	/**********************************************************************************************
+	 ** For the LEGACY version of the vaults, we need to know the decimals to adjust the PPS value
+	 *********************************************************************************************/
+	const {data: decimals} = useReadContract({
+		address: args.vault,
+		abi: vaultAbi,
+		functionName: 'decimals',
+		args: [],
+		chainId: args.chainID,
+		query: {
+			enabled: args.version === 'LEGACY'
+		}
+	});
+
+	/**********************************************************************************************
 	 ** expectedOut is the expected amount of the token after the deposit. It is calculated based
 	 ** on the price per share for the LEGACY version of the vaults and the previewDeposit for the
 	 ** ERC-4626 version of the vaults.
 	 *********************************************************************************************/
 	const expectedOut = useMemo(() => {
 		if (args.version === 'LEGACY') {
-			return toBigInt(pricePerShare) * args.amountToDeposit;
+			return (toBigInt(pricePerShare) * args.amountToDeposit) / 10n ** toBigInt(decimals);
 		}
 
 		return toBigInt(previewDeposit);
-	}, [args.version, args.amountToDeposit, previewDeposit, pricePerShare]);
+	}, [args.version, args.amountToDeposit, previewDeposit, pricePerShare, decimals]);
 
 	/**********************************************************************************************
 	 ** canDeposit is a boolean that is true if the token can be deposited. It can be deposited if
