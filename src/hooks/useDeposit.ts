@@ -209,7 +209,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			 ** If we are dealing with a Safe, then we need to use the Safe SDK to perform the deposit with
 			 ** the batch transaction.
 			 *********************************************************************************************/
-			if (isWalletSafe) {
+			if (isWalletSafe && !args.options?.disableSafeBatch) {
 				let safeTransactionResult;
 				const batch = [];
 				if (!isZeroAddress(args.tokenToDeposit)) {
