@@ -35,8 +35,8 @@ type TUseDepositArgs = {
 				  }
 				| {
 						useRouter: false;
-						routerAddress: undefined;
-						minOutSlippage: undefined;
+						routerAddress?: undefined;
+						minOutSlippage?: undefined;
 						permitCalldata?: undefined;
 				  };
 	  }
@@ -77,7 +77,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 	 ** We will used that as an `expectedOut` value.
 	 *********************************************************************************************/
 	const {data: previewDeposit} = useReadContract({
-		address: args.tokenToDeposit,
+		address: args.vault,
 		abi: erc4626Abi,
 		functionName: 'previewDeposit',
 		args: [args.amountToDeposit],
