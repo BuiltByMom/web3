@@ -6,7 +6,7 @@ import {readContract} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
 import {encodeFunctionCall, isAddress, isEthAddress, isZeroAddress, toAddress} from '../utils';
-import {erc4626RouterAbi} from '../utils/abi/erc4626Router.abi';
+import {erc4626RouterAbi} from '../utils/abi/4626Router.abi';
 import {vaultAbi} from '../utils/abi/vaultV2.abi';
 import {depositTo4626VaultViaRouter, depositToVault, retrieveConfig, toWagmiProvider} from '../utils/wagmi';
 import {toBigInt} from './../utils/format';

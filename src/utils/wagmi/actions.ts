@@ -3,7 +3,7 @@ import {erc20Abi, erc4626Abi, isAddressEqual} from 'viem';
 import {readContract, sendTransaction, waitForTransactionReceipt} from '@wagmi/core';
 
 import {MAX_UINT_256} from '../../utils/constants';
-import {erc4626RouterAbi} from '../abi/erc4626Router.abi';
+import {erc4626RouterAbi} from '../abi/4626Router.abi';
 import {usdtAbi, usdtAddress} from '../abi/usdt.abi';
 import {assertAddress} from '../assert';
 import {toAddress} from '../tools.address';

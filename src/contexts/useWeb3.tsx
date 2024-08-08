@@ -10,6 +10,7 @@ import {
 	useWalletClient
 } from 'wagmi';
 import {Clusters, getImageUrl} from '@clustersxyz/sdk';
+import SafeProvider from '@gnosis.pm/safe-apps-react-sdk';
 import {useAccountModal, useChainModal, useConnectModal} from '@rainbow-me/rainbowkit';
 import {useIsMounted, useMountEffect, useUpdateEffect} from '@react-hookz/web';
 
@@ -240,7 +241,11 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 		onDesactivate: onDesactivate
 	};
 
-	return <Web3Context.Provider value={contextValue}>{props.children}</Web3Context.Provider>;
+	return (
+		<Web3Context.Provider value={contextValue}>
+			<SafeProvider>{props.children}</SafeProvider>
+		</Web3Context.Provider>
+	);
 };
 
 export const useWeb3 = (): TWeb3Context => useContext(Web3Context);
