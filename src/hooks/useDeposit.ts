@@ -3,13 +3,14 @@ import {encodeFunctionData, erc20Abi, erc4626Abi, maxUint256} from 'viem';
 import {useReadContract} from 'wagmi';
 import {readContract} from '@wagmi/core';
 
-import {isAddress, isEthAddress} from '../utils';
+import {isAddress, isEthAddress, toAddress} from '../utils';
 import {erc4626RouterAbi} from '../utils/abi/erc4626Router.abi';
 import {depositTo4626VaultViaRouter, depositToVault, retrieveConfig, toWagmiProvider} from '../utils/wagmi';
 import {toBigInt} from './../utils/format';
 
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types';
+import type {TPermitSignature} from './usePermit.types';
 
 type TUseDepositArgsBase = {
 	provider: Connector | undefined;
@@ -32,7 +33,7 @@ type TUseDepositArgsERC4626 = TUseDepositArgsBase & {
 		useRouter: boolean;
 		routerAddress: TAddress;
 		minOutSlippage: bigint;
-		permitCalldata?: string;
+		permitSignature?: TPermitSignature;
 	};
 };
 
@@ -231,8 +232,21 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 				/**********************************************************************************************
 				 ** Then we can prepare our multicall
 				 *********************************************************************************************/
-				if (args.options.permitCalldata) {
-					multicalls.push(args.options.permitCalldata);
+				if (args.options.permitSignature) {
+					multicalls.push(
+						encodeFunctionData({
+							abi: erc4626RouterAbi,
+							functionName: 'selfPermit',
+							args: [
+								toAddress(args.tokenToDeposit),
+								toBigInt(args.amountToDeposit),
+								args.options.permitSignature.deadline,
+								args.options.permitSignature.v,
+								args.options.permitSignature.r,
+								args.options.permitSignature.s
+							]
+						})
+					);
 				}
 				multicalls.push(
 					encodeFunctionData({

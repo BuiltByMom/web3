@@ -155,22 +155,25 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 						set_permitAllowance(args.amountToApprove);
 						onSuccess?.();
 					}
+					await refetch();
+					set_isApproving(false);
 				}
+				return;
+			}
+
+			const result = await approveERC20({
+				connector: args.provider,
+				chainID: args.chainID,
+				contractAddress: args.tokenToApprove,
+				spenderAddress: args.spender,
+				amount: args.amountToApprove
+			});
+			set_permitSignature(undefined);
+			set_permitAllowance(undefined);
+			if (result.isSuccessful) {
+				onSuccess?.();
 			} else {
-				const result = await approveERC20({
-					connector: args.provider,
-					chainID: args.chainID,
-					contractAddress: args.tokenToApprove,
-					spenderAddress: args.spender,
-					amount: args.amountToApprove
-				});
-				set_permitSignature(undefined);
-				set_permitAllowance(undefined);
-				if (result.isSuccessful) {
-					onSuccess?.();
-				} else {
-					onFailure?.();
-				}
+				onFailure?.();
 			}
 
 			await refetch();
