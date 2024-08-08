@@ -244,7 +244,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 				const result = await depositTo4626VaultViaRouter({
 					connector: args.provider,
 					chainID: args.chainID,
-					contractAddress: args.vault,
+					contractAddress: args.options.routerAddress,
 					multicalls
 				});
 				if (result.isSuccessful) {
