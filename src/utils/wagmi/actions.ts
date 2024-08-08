@@ -1,7 +1,9 @@
-import {erc20Abi, isAddressEqual} from 'viem';
+import assert from 'assert';
+import {erc20Abi, erc4626Abi, isAddressEqual} from 'viem';
 import {readContract, sendTransaction, waitForTransactionReceipt} from '@wagmi/core';
 
 import {MAX_UINT_256} from '../../utils/constants';
+import {erc4626RouterAbi} from '../abi/erc4626Router.abi';
 import {usdtAbi, usdtAddress} from '../abi/usdt.abi';
 import {assertAddress} from '../assert';
 import {toAddress} from '../tools.address';
@@ -190,4 +192,54 @@ export async function transferEther(props: TTransferEther): Promise<TTxResponse>
 			props.statusHandler?.({...defaultTxStatus});
 		}, 3000);
 	}
+}
+
+/**************************************************************************************************
+ ** depositERC20 is a _WRITE_ function that deposits an ERC20 token into a vault.
+ **
+ ** @app - Vaults
+ ** @param amount - The amount of ERC20 to deposit.
+ ** @param receiverAddress - The address of the receiver.
+ *************************************************************************************************/
+type TDepositArgs = TWriteTransaction & {
+	amount: bigint;
+	receiverAddress: TAddress;
+};
+export async function depositToVault(props: TDepositArgs): Promise<TTxResponse> {
+	assert(props.amount > 0n, 'Amount is 0');
+	assertAddress(props.contractAddress);
+	assertAddress(props.receiverAddress, 'receiverAddress');
+
+	return await handleTx(props, {
+		address: props.contractAddress,
+		abi: erc4626Abi,
+		functionName: 'deposit',
+		args: [props.amount, props.receiverAddress]
+	});
+}
+
+/**************************************************************************************************
+ ** depositViaRouter is a _WRITE_ function that deposits the chain Coin (eth/matic/etc.) to a vault
+ ** via a set of specific operations.
+ **
+ ** @app - Vaults
+ ** @param amount - The amount of ETH to deposit.
+ ** @param token - The address of the token to deposit.
+ ** @param vault - The address of the vault to deposit into.
+ ** @param permitCalldata - The calldata for the permit
+ ************************************************************************************************/
+type TDepositViaRouter = TWriteTransaction & {
+	multicalls?: string[];
+};
+export async function depositTo4626VaultViaRouter(props: TDepositViaRouter): Promise<TTxResponse> {
+	assertAddress(props.contractAddress);
+
+	return await handleTx(props, {
+		address: props.contractAddress,
+		chainId: props.chainID,
+		abi: erc4626RouterAbi,
+		functionName: 'multicall',
+		value: 0n,
+		args: [props.multicalls]
+	});
 }
