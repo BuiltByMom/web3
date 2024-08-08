@@ -1,6 +1,6 @@
 {
   "name": "@builtbymom/web3",
-  "version": "0.0.168",
+  "version": "0.0.169",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "private": false,
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@clustersxyz/sdk": "^0.2.1",
+    "@gnosis.pm/safe-apps-react-sdk": "^4.6.2",
     "@rainbow-me/rainbowkit": "^2.1.3",
     "@react-hookz/web": "^24.0.4",
     "@tanstack/react-query": "^5.50.1",

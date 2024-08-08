@@ -1,6 +1,10 @@
+import {encodeFunctionData, toHex} from 'viem';
+
 import {toNormalizedBN} from './format';
 import {isObject} from './tools.is';
 
+import type {EncodeFunctionDataParameters, Hex} from 'viem';
+import type {TAddress} from '../types';
 import type {TSortDirection} from '../types/mixed';
 
 /***************************************************************************
@@ -112,4 +116,27 @@ export function deepMerge(target: unknown, source: unknown): unknown {
 	});
 
 	return target;
+}
+
+/***************************************************************************
+ ** Helper function to encode the function call
+ **************************************************************************/
+type TEncodeFunctionCallArgs = {
+	to: TAddress;
+	value: bigint;
+} & EncodeFunctionDataParameters;
+
+type TEncodeFunctionCallResp = {
+	to: TAddress;
+	value: Hex;
+	data: Hex;
+};
+export function encodeFunctionCall(args: TEncodeFunctionCallArgs): TEncodeFunctionCallResp {
+	const {to, value, ...rest} = args;
+
+	return {
+		to,
+		value: toHex(value),
+		data: encodeFunctionData(rest)
+	};
 }

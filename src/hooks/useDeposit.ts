@@ -1,20 +1,20 @@
 import {useCallback, useMemo, useState} from 'react';
 import {encodeFunctionData, erc20Abi, erc4626Abi, maxUint256} from 'viem';
 import {useReadContract} from 'wagmi';
+import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {readContract} from '@wagmi/core';
 
-import {isAddress, isEthAddress, toAddress} from '../utils';
+import {useWeb3} from '../contexts/useWeb3';
+import {encodeFunctionCall, isAddress, isEthAddress, isZeroAddress, toAddress} from '../utils';
 import {erc4626RouterAbi} from '../utils/abi/erc4626Router.abi';
 import {vaultAbi} from '../utils/abi/vaultV2.abi';
 import {depositTo4626VaultViaRouter, depositToVault, retrieveConfig, toWagmiProvider} from '../utils/wagmi';
 import {toBigInt} from './../utils/format';
 
-import type {Connector} from 'wagmi';
 import type {TAddress} from '../types';
 import type {TPermitSignature} from './usePermit.types';
 
 type TUseDepositArgsBase = {
-	provider: Connector | undefined;
 	tokenToDeposit: TAddress;
 	vault: TAddress;
 	owner: TAddress;
@@ -25,12 +25,15 @@ type TUseDepositArgsBase = {
 
 type TUseDepositArgsLegacy = TUseDepositArgsBase & {
 	version: 'LEGACY';
-	options?: undefined;
+	options?: {
+		disableSafeBatch?: boolean;
+	};
 };
 
 type TUseDepositArgsERC4626 = TUseDepositArgsBase & {
 	version: 'ERC-4626';
 	options?: {
+		disableSafeBatch?: boolean;
 		useRouter: boolean;
 		routerAddress: TAddress;
 		minOutSlippage: bigint;
@@ -49,6 +52,8 @@ type TUseApproveResp = {
 };
 
 export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
+	const {sdk} = useSafeAppsSDK();
+	const {provider, isWalletSafe} = useWeb3();
 	const [isDepositing, set_isDepositing] = useState(false);
 
 	/**********************************************************************************************
@@ -198,9 +203,62 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			if (!canDeposit) {
 				return false;
 			}
-
 			set_isDepositing(true);
-			const wagmiProvider = await toWagmiProvider(args.provider);
+
+			/**********************************************************************************************
+			 ** If we are dealing with a Safe, then we need to use the Safe SDK to perform the deposit with
+			 ** the batch transaction.
+			 *********************************************************************************************/
+			if (isWalletSafe) {
+				let safeTransactionResult;
+				const batch = [];
+				if (!isZeroAddress(args.tokenToDeposit)) {
+					batch.push(
+						encodeFunctionCall({
+							to: args.tokenToDeposit,
+							value: 0n,
+							abi: erc20Abi,
+							functionName: 'approve',
+							args: [toAddress(args.vault), toBigInt(args.amountToDeposit)]
+						})
+					);
+				}
+				batch.push(
+					encodeFunctionCall({
+						to: args.vault,
+						value: 0n,
+						abi: vaultAbi,
+						functionName: 'deposit',
+						args: [toBigInt(args.amountToDeposit), isAddress(args.receiver) ? args.receiver : args.owner]
+					})
+				);
+
+				try {
+					const res = sdk.txs.send({txs: batch});
+					do {
+						safeTransactionResult = await sdk.txs.getBySafeTxHash((await res).safeTxHash);
+						await new Promise(resolve => setTimeout(resolve, 30_000));
+					} while (
+						safeTransactionResult.txStatus !== 'SUCCESS' &&
+						safeTransactionResult.txStatus !== 'FAILED' &&
+						safeTransactionResult.txStatus !== 'CANCELLED'
+					);
+
+					if (safeTransactionResult.txStatus === 'SUCCESS') {
+						onSuccess?.();
+					} else {
+						onFailure?.();
+					}
+				} catch (err) {
+					console.error(err);
+					onFailure?.();
+				} finally {
+					set_isDepositing(false);
+				}
+				return safeTransactionResult?.txStatus === 'SUCCESS';
+			}
+
+			const wagmiProvider = await toWagmiProvider(provider);
 			if (!wagmiProvider || !isAddress(wagmiProvider.address)) {
 				set_isDepositing(false);
 				return false;
@@ -212,7 +270,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			 *********************************************************************************************/
 			if (args.version === 'LEGACY') {
 				const result = await depositToVault({
-					connector: args.provider,
+					connector: provider,
 					chainID: args.chainID,
 					contractAddress: args.vault,
 					receiverAddress: isAddress(args.receiver) ? args.receiver : args.owner,
@@ -287,11 +345,16 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 					encodeFunctionData({
 						abi: erc4626RouterAbi,
 						functionName: 'depositToVault',
-						args: [args.vault, args.amountToDeposit, wagmiProvider.address, minShareOut]
+						args: [
+							args.vault,
+							args.amountToDeposit,
+							isAddress(args.receiver) ? args.receiver : args.owner,
+							minShareOut
+						]
 					})
 				);
 				const result = await depositTo4626VaultViaRouter({
-					connector: args.provider,
+					connector: provider,
 					chainID: args.chainID,
 					contractAddress: args.options.routerAddress,
 					multicalls
@@ -307,7 +370,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			}
 
 			const result = await depositToVault({
-				connector: args.provider,
+				connector: provider,
 				chainID: args.chainID,
 				contractAddress: args.vault,
 				receiverAddress: isAddress(args.receiver) ? args.receiver : args.owner,
@@ -323,18 +386,20 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 			return result.isSuccessful;
 		},
 		[
-			args.amountToDeposit,
-			args.chainID,
-			args.options,
-			args.owner,
-			args.provider,
-			args.receiver,
-			args.tokenToDeposit,
-			args.vault,
-			args.version,
 			canDeposit,
-			previewDeposit,
-			refetchMaxDepositForUser
+			isWalletSafe,
+			provider,
+			args.version,
+			args.options,
+			args.chainID,
+			args.vault,
+			args.receiver,
+			args.owner,
+			args.amountToDeposit,
+			args.tokenToDeposit,
+			refetchMaxDepositForUser,
+			sdk.txs,
+			previewDeposit
 		]
 	);
 
