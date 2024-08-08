@@ -42,13 +42,13 @@ function WithMom({children, supportedChains, defaultNetwork, tokenLists, rainbow
 		<WagmiProvider config={config}>
 			<QueryClientProvider client={queryClient}>
 				<RainbowKitProvider {...rainbowConfig}>
-					<Web3ContextApp defaultNetwork={defaultNetwork}>
-						<WithTokenList lists={tokenLists}>
-							<SafeProvider>
+					<SafeProvider>
+						<Web3ContextApp defaultNetwork={defaultNetwork}>
+							<WithTokenList lists={tokenLists}>
 								<Fragment>{children}</Fragment>
-							</SafeProvider>
-						</WithTokenList>
-					</Web3ContextApp>
+							</WithTokenList>
+						</Web3ContextApp>
+					</SafeProvider>
 				</RainbowKitProvider>
 			</QueryClientProvider>
 		</WagmiProvider>
