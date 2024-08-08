@@ -11,29 +11,32 @@ import {toBigInt} from './../utils/format';
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types';
 
-type TUseDepositArgs = {
+type TUseDepositArgsBase = {
 	provider: Connector | undefined;
-	tokenToDeposit: TAddress; // Token we want to deposit
-	vault: TAddress; // Address of the vault
-	owner: TAddress; // Address that owns the token
-	receiver?: TAddress; // Address that will receive the token. By default, it is the owner
-	amountToDeposit: bigint; // Amount to deposit
-	chainID: number; // Chain ID
-} & (
-	| {
-			version: 'LEGACY';
-			options?: undefined;
-	  }
-	| {
-			version: 'ERC-4626';
-			options?: {
-				useRouter: boolean; // If a router should be used. Only supported router is the Yearn router
-				routerAddress: TAddress; // Address of the router
-				minOutSlippage: bigint; // Minimum slippage for the router in percentage (1 = 0.01%)
-				permitCalldata?: string; // Calldata for the permit
-			};
-	  }
-);
+	tokenToDeposit: TAddress;
+	vault: TAddress;
+	owner: TAddress;
+	receiver?: TAddress;
+	amountToDeposit: bigint;
+	chainID: number;
+};
+
+type TUseDepositArgsLegacy = TUseDepositArgsBase & {
+	version: 'LEGACY';
+	options?: undefined;
+};
+
+type TUseDepositArgsERC4626 = TUseDepositArgsBase & {
+	version: 'ERC-4626';
+	options?: {
+		useRouter: boolean;
+		routerAddress: TAddress;
+		minOutSlippage: bigint;
+		permitCalldata?: string;
+	};
+};
+
+type TUseDepositArgs = TUseDepositArgsLegacy | TUseDepositArgsERC4626;
 
 type TUseApproveResp = {
 	maxDepositForUser: bigint; // Maximum amount that can be deposited by the user
