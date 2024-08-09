@@ -35,6 +35,8 @@ type TUseWithdrawArgs = TUseWithdrawArgsLegacy | TUseWithdrawArgsERC4626;
 
 type TUseWithdrawResp = {
 	maxWithdrawForUser: bigint; // Maximum amount that can be withdrawn by the user
+	shareOf: bigint; // Amount of shares the user has
+	balanceOf: bigint; // Amount of tokens the user has (converted from shares)
 	canWithdraw: boolean; // If the token can be withdrawn
 	isWithdrawing: boolean; // If the approval is in progress
 	onWithdraw: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to withdraw the token
@@ -57,6 +59,8 @@ type TUseWithdrawResp = {
  ** @returns maxWithdrawForUser: bigint - The maximum amount that can be withdrawn by the user.
  **          This is exprimed in underlying token, so this means this is a shortcut for
  **          `vault.convertToAsset(vault.balanceOf(owner))`.
+ ** @returns shareOf: bigint - The amount of shares the user has.
+ ** @returns balanceOf: bigint - The amount of tokens the user has (converted from shares).
  ** @returns canWithdraw: boolean - If the token can be withdrawn.
  ** @returns isWithdrawing: boolean - If the approval is in progress.
  ** @returns onWithdraw: () => void - Function to withdraw the token.
@@ -80,6 +84,32 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		chainId: args.chainID,
 		query: {
 			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
+		}
+	});
+
+	/**********************************************************************************************
+	 ** The balanceOf for the vault is returning the number of shares the user has and not the
+	 ** amount of tokens the user has. To get the amount of tokens the user has, we need to call
+	 ** the convertToAssets function once we have the balanceOf.
+	 *********************************************************************************************/
+	const {data: balanceOf, refetch: refetchBalanceOf} = useReadContract({
+		address: args.vault,
+		abi: erc4626Abi,
+		functionName: 'balanceOf',
+		args: [args.owner],
+		chainId: args.chainID,
+		query: {
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
+		}
+	});
+	const {data: convertToAssets} = useReadContract({
+		address: args.vault,
+		abi: erc4626Abi,
+		functionName: 'convertToAssets',
+		args: [toBigInt(balanceOf)],
+		chainId: args.chainID,
+		query: {
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && balanceOf !== undefined
 		}
 	});
 
@@ -213,13 +243,6 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 			const tolerance = (availableShares * args.redeemTolerance) / 10000n; // X% of the balance
 			const isAskingToWithdrawAll = availableShares - convertToShare < tolerance;
 
-			console.warn({
-				convertToShare,
-				availableShares,
-				tolerance,
-				isAskingToWithdrawAll
-			});
-
 			const result = await withdrawFrom4626Vault({
 				connector: provider,
 				chainID: args.chainID,
@@ -236,11 +259,13 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 				onFailure?.();
 			}
 			await refetchMaxWithdrawForUser();
+			await refetchBalanceOf();
 			set_isWithdrawing(false);
 			return result.isSuccessful;
 		},
 		[
 			canWithdraw,
+			provider,
 			args.version,
 			args.minOutSlippage,
 			args.redeemTolerance,
@@ -249,13 +274,15 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 			args.amountToWithdraw,
 			args.receiver,
 			args.owner,
-			provider,
-			refetchMaxWithdrawForUser
+			refetchMaxWithdrawForUser,
+			refetchBalanceOf
 		]
 	);
 
 	return {
 		maxWithdrawForUser: toBigInt(maxWithdrawForUser),
+		shareOf: toBigInt(balanceOf),
+		balanceOf: toBigInt(convertToAssets),
 		canWithdraw,
 		isWithdrawing,
 		onWithdraw
