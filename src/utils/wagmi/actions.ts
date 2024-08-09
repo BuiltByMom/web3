@@ -5,6 +5,7 @@ import {readContract, sendTransaction, waitForTransactionReceipt} from '@wagmi/c
 import {MAX_UINT_256} from '../../utils/constants';
 import {erc4626RouterAbi} from '../abi/4626Router.abi';
 import {usdtAbi, usdtAddress} from '../abi/usdt.abi';
+import {vaultAbi} from '../abi/vaultV2.abi';
 import {assertAddress} from '../assert';
 import {toAddress} from '../tools.address';
 import {retrieveConfig} from './config';
@@ -128,12 +129,12 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
  ** @param amount - The amount of collateral to deposit.
  ******************************************************************************/
 type TTransferERC20 = TWriteTransaction & {
-	receiverAddress: TAddress | undefined;
+	receiver: TAddress | undefined;
 	amount: bigint;
 };
 
 export async function transferERC20(props: TTransferERC20): Promise<TTxResponse> {
-	assertAddress(props.receiverAddress, 'receiverAddress');
+	assertAddress(props.receiver, 'receiver');
 	assertAddress(props.contractAddress);
 
 	return await handleTx(props, {
@@ -141,7 +142,7 @@ export async function transferERC20(props: TTransferERC20): Promise<TTxResponse>
 		abi: isAddressEqual(props.contractAddress, usdtAddress) ? (usdtAbi as Abi) : erc20Abi,
 		confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
 		functionName: 'transfer',
-		args: [props.receiverAddress, props.amount]
+		args: [props.receiver, props.amount]
 	});
 }
 
@@ -153,13 +154,13 @@ export async function transferERC20(props: TTransferERC20): Promise<TTxResponse>
  ** @param amount - The amount of collateral to deposit.
  ******************************************************************************/
 type TTransferEther = Omit<TWriteTransaction, 'contractAddress'> & {
-	receiverAddress: TAddress | undefined;
+	receiver: TAddress | undefined;
 	amount: bigint;
 	shouldAdjustForGas?: boolean;
 };
 
 export async function transferEther(props: TTransferEther): Promise<TTxResponse> {
-	assertAddress(props.receiverAddress, 'receiverAddress');
+	assertAddress(props.receiver, 'receiver');
 
 	props.statusHandler?.({...defaultTxStatus, pending: true});
 	const wagmiProvider = await toWagmiProvider(props.connector);
@@ -168,7 +169,7 @@ export async function transferEther(props: TTransferEther): Promise<TTxResponse>
 	try {
 		const hash = await sendTransaction(retrieveConfig(), {
 			...wagmiProvider,
-			to: props.receiverAddress,
+			to: props.receiver,
 			value: props.amount
 		});
 		const receipt = await waitForTransactionReceipt(retrieveConfig(), {
@@ -199,28 +200,28 @@ export async function transferEther(props: TTransferEther): Promise<TTxResponse>
  **
  ** @app - Vaults
  ** @param amount - The amount of ERC20 to deposit.
- ** @param receiverAddress - The address of the receiver.
+ ** @param receiver - The address of the receiver.
  *************************************************************************************************/
 type TDepositArgs = TWriteTransaction & {
 	amount: bigint;
-	receiverAddress: TAddress;
+	receiver: TAddress;
 };
 export async function depositToVault(props: TDepositArgs): Promise<TTxResponse> {
 	assert(props.amount > 0n, 'Amount is 0');
 	assertAddress(props.contractAddress);
-	assertAddress(props.receiverAddress, 'receiverAddress');
+	assertAddress(props.receiver, 'receiver');
 
 	return await handleTx(props, {
 		address: props.contractAddress,
 		abi: erc4626Abi,
 		functionName: 'deposit',
-		args: [props.amount, props.receiverAddress]
+		args: [props.amount, props.receiver]
 	});
 }
 
 /**************************************************************************************************
- ** depositViaRouter is a _WRITE_ function that deposits the chain Coin (eth/matic/etc.) to a vault
- ** via a set of specific operations.
+ ** depositViaRouter is a _WRITE_ function that deposits to a vault via the router and a set of
+ ** specific operations.
  **
  ** @app - Vaults
  ** @param amount - The amount of ETH to deposit.
@@ -241,5 +242,66 @@ export async function depositTo4626VaultViaRouter(props: TDepositViaRouter): Pro
 		functionName: 'multicall',
 		value: 0n,
 		args: [props.multicalls]
+	});
+}
+
+/**************************************************************************************************
+ ** withdrawFromVault is a _WRITE_ function that withdraws a share of underlying
+ ** collateral from a vault.
+ **
+ ** @app - Vaults
+ ** @param amount - The amount of ETH to withdraw.
+ ** @param receiver - The address of the receiver.
+ ************************************************************************************************/
+type TWithdrawFromVault = TWriteTransaction & {
+	amount: bigint;
+	receiver: TAddress;
+};
+export async function withdrawFromVault(props: TWithdrawFromVault): Promise<TTxResponse> {
+	assert(props.amount > 0n, 'Amount is 0');
+	assertAddress(props.contractAddress);
+
+	return await handleTx(props, {
+		address: props.contractAddress,
+		abi: vaultAbi,
+		functionName: 'withdraw',
+		args: [props.amount, props.receiver]
+	});
+}
+
+/**************************************************************************************************
+ ** withdrawFrom4626Vault is a _WRITE_ function that withdraws a given amount of tokens/shares from
+ ** a 4626 vault.
+ **
+ ** @app - Vaults
+ ** @param amount - The amount of ETH to deposit.
+ ** @param token - The address of the token to deposit.
+ ** @param vault - The address of the vault to deposit into.
+ ** @param permitCalldata - The calldata for the permit
+ ************************************************************************************************/
+type TWithdrawFrom4626Vault = TWriteTransaction & {
+	amount: bigint;
+	maxLoss: bigint;
+	shouldUseRedeem?: boolean;
+	receiver: TAddress;
+	owner: TAddress;
+};
+export async function withdrawFrom4626Vault(props: TWithdrawFrom4626Vault): Promise<TTxResponse> {
+	assertAddress(props.contractAddress);
+
+	if (props.shouldUseRedeem) {
+		return await handleTx(props, {
+			address: props.contractAddress,
+			chainId: props.chainID,
+			abi: erc4626Abi,
+			functionName: 'redeem',
+			args: [props.amount, props.receiver, props.owner, props.maxLoss]
+		});
+	}
+	return await handleTx(props, {
+		address: props.contractAddress,
+		abi: erc4626Abi,
+		functionName: 'withdraw',
+		args: [props.amount, props.receiver, props.owner, props.maxLoss]
 	});
 }

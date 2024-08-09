@@ -43,7 +43,7 @@ type TUseDepositArgsERC4626 = TUseDepositArgsBase & {
 
 type TUseDepositArgs = TUseDepositArgsLegacy | TUseDepositArgsERC4626;
 
-type TUseApproveResp = {
+type TUseDepositResp = {
 	maxDepositForUser: bigint; // Maximum amount that can be deposited by the user
 	expectedOut: bigint; // Expected amount of the token after the deposit
 	canDeposit: boolean; // If the token can be deposited`
@@ -51,7 +51,7 @@ type TUseApproveResp = {
 	onDeposit: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to deposit the token
 };
 
-export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
+export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 	const {sdk} = useSafeAppsSDK();
 	const {provider, isWalletSafe} = useWeb3();
 	const [isDepositing, set_isDepositing] = useState(false);
@@ -143,7 +143,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 	 *********************************************************************************************/
 	const expectedOut = useMemo(() => {
 		if (args.version === 'LEGACY') {
-			return (toBigInt(pricePerShare) * args.amountToDeposit) / 10n ** toBigInt(decimals);
+			return toBigInt((args.amountToDeposit / toBigInt(pricePerShare)) * 10n ** toBigInt(decimals));
 		}
 
 		return toBigInt(previewDeposit);
@@ -273,7 +273,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 					connector: provider,
 					chainID: args.chainID,
 					contractAddress: args.vault,
-					receiverAddress: isAddress(args.receiver) ? args.receiver : args.owner,
+					receiver: isAddress(args.receiver) ? args.receiver : args.owner,
 					amount: args.amountToDeposit
 				});
 				if (result.isSuccessful) {
@@ -373,7 +373,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseApproveResp {
 				connector: provider,
 				chainID: args.chainID,
 				contractAddress: args.vault,
-				receiverAddress: isAddress(args.receiver) ? args.receiver : args.owner,
+				receiver: isAddress(args.receiver) ? args.receiver : args.owner,
 				amount: args.amountToDeposit
 			});
 			if (result.isSuccessful) {
