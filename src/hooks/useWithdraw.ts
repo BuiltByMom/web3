@@ -5,7 +5,6 @@ import {readContracts} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
 import {decodeAsBigInt, isAddress, isEthAddress} from '../utils';
-import {vaultAbi} from '../utils/abi/vaultV2.abi';
 import {toBigInt} from '../utils/format';
 import {retrieveConfig, toWagmiProvider, withdrawFrom4626Vault, withdrawFromVault} from '../utils/wagmi';
 
@@ -36,12 +35,30 @@ type TUseWithdrawArgs = TUseWithdrawArgsLegacy | TUseWithdrawArgsERC4626;
 
 type TUseWithdrawResp = {
 	maxWithdrawForUser: bigint; // Maximum amount that can be withdrawn by the user
-	expectedOut: bigint; // Expected amount of the token after the deposit
 	canWithdraw: boolean; // If the token can be withdrawn
 	isWithdrawing: boolean; // If the approval is in progress
 	onWithdraw: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to withdraw the token
 };
 
+/**********************************************************************************************
+ ** The useVaultWithdraw hook is used to withdraw tokens from a vault. It takes the following
+ ** arguments:
+ ** @params tokenToWithdraw: TAddress - The address of the token to withdraw.
+ ** @params vault: TAddress - The address of the vault.
+ ** @params owner: TAddress - The address of the owner of the token.
+ ** @params receiver: TAddress - The address of the receiver of the token.
+ ** @params amountToWithdraw: bigint - The amount of the token to withdraw.
+ ** @params chainID: number - The chain ID.
+ ** @params version: 'LEGACY' | 'ERC-4626' - The version of the vault.
+ ** @params minOutSlippage: bigint - The minimum slippage for the withdraw (ERC-4626).
+ ** @params redeemTolerance: bigint - The tolerance for the redeem (ERC-4626).
+ **
+ ** It returns the following:
+ ** @returns maxWithdrawForUser: bigint - The maximum amount that can be withdrawn by the user.
+ **          This is exprimed in underlying token, so this means this is a shortcut for
+ **          `vault.convertToAsset(vault.balanceOf(owner))`.
+ ** @returns expectedOut: bigint - The expected amount of the token after the deposit.
+ *********************************************************************************************/
 export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	const {provider} = useWeb3();
 	const [isWithdrawing, set_isWithdrawing] = useState(false);
@@ -65,71 +82,12 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	});
 
 	/**********************************************************************************************
-	 ** The ERC-4626 version of the vaults has a method called previewWithdraw: this function allows
-	 ** users to simulate the effects of their withdraw at the current block.
-	 ** We will used that as an `expectedOut` value.
-	 *********************************************************************************************/
-	const {data: previewWithdraw} = useReadContract({
-		address: args.vault,
-		abi: erc4626Abi,
-		functionName: 'previewWithdraw',
-		args: [args.amountToWithdraw],
-		chainId: args.chainID,
-		query: {
-			enabled: args.version === 'ERC-4626'
-		}
-	});
-
-	/**********************************************************************************************
-	 ** The LEGACY version of the vaults no way to preview the withdraw, so we will use the PPS
-	 ** value to simulate the effects of the withdraw.
-	 *********************************************************************************************/
-	const {data: pricePerShare} = useReadContract({
-		address: args.vault,
-		abi: vaultAbi,
-		functionName: 'pricePerShare',
-		args: [],
-		chainId: args.chainID,
-		query: {
-			enabled: args.version === 'LEGACY'
-		}
-	});
-
-	/**********************************************************************************************
-	 ** For the LEGACY version of the vaults, we need to know the decimals to adjust the PPS value
-	 *********************************************************************************************/
-	const {data: decimals} = useReadContract({
-		address: args.vault,
-		abi: vaultAbi,
-		functionName: 'decimals',
-		args: [],
-		chainId: args.chainID,
-		query: {
-			enabled: args.version === 'LEGACY'
-		}
-	});
-
-	/**********************************************************************************************
-	 ** expectedOut is the expected amount of the token after the deposit. It is calculated based
-	 ** on the price per share for the LEGACY version of the vaults and the previewWithdraw for the
-	 ** ERC-4626 version of the vaults.
-	 *********************************************************************************************/
-	const expectedOut = useMemo(() => {
-		if (args.version === 'LEGACY') {
-			return (toBigInt(pricePerShare) * args.amountToWithdraw) / 10n ** toBigInt(decimals);
-		}
-
-		return toBigInt(previewWithdraw);
-	}, [args.version, args.amountToWithdraw, previewWithdraw, pricePerShare, decimals]);
-
-	/**********************************************************************************************
 	 ** canWithdraw is a boolean that is true if the token can be withdrawn. It can be withdrawn if
 	 ** the following conditions are met:
-	 ** 1. args.tokenToWithdraw is a valid address
-	 ** 2. args.vault is a valid address
-	 ** 3. args.amountToWithdraw is greater than 0
-	 ** 4. maxWithdrawForUser is defined and greater than or equal to args.amountToWithdraw
-	 ** 5. previewWithdraw is defined and greater than 0
+	 ** 1. If the version is LEGACY, then we can directly deposit the token into the vault.
+	 ** 2. If the token to withdraw is an Ethereum address, then the token cannot be withdrawn
+	 ** 3. If the token to withdraw and the vault are valid addresses
+	 ** 4. If the amount to withdraw is greater than 0 and less than the max withdraw for the user
 	 *********************************************************************************************/
 	const canWithdraw = useMemo(() => {
 		if (args.version === 'LEGACY') {
@@ -145,8 +103,8 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		if (args.amountToWithdraw <= 0n || args.amountToWithdraw > toBigInt(maxWithdrawForUser)) {
 			return false;
 		}
-		return Boolean(previewWithdraw && toBigInt(previewWithdraw) > 0n);
-	}, [args.version, args.tokenToWithdraw, args.vault, args.amountToWithdraw, maxWithdrawForUser, previewWithdraw]);
+		return true;
+	}, [args.version, args.tokenToWithdraw, args.vault, args.amountToWithdraw, maxWithdrawForUser]);
 
 	/**********************************************************************************************
 	 ** onWithdraw is a function that is called to deposit the token. It takes two optional
@@ -289,7 +247,6 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 
 	return {
 		maxWithdrawForUser: toBigInt(maxWithdrawForUser),
-		expectedOut: toBigInt(expectedOut),
 		canWithdraw,
 		isWithdrawing,
 		onWithdraw

@@ -45,12 +45,21 @@ type TUseDepositArgs = TUseDepositArgsLegacy | TUseDepositArgsERC4626;
 
 type TUseDepositResp = {
 	maxDepositForUser: bigint; // Maximum amount that can be deposited by the user
-	expectedOut: bigint; // Expected amount of the token after the deposit
 	canDeposit: boolean; // If the token can be deposited`
 	isDepositing: boolean; // If the approval is in progress
 	onDeposit: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to deposit the token
 };
 
+/**********************************************************************************************
+ ** The useVaultDeposit hook is used to deposit the token to the vault. It supports both V3
+ ** and legacy vaults and will work with the yRouters if a signature is provided.
+ **
+ ** @returns canDeposit: boolean - Whether the user can deposit the token (no allowance or
+ **			 balance checks are done here).
+ ** @returns isDepositing: boolean - Whether the deposit is in progress.
+ ** @returns onDeposit: () => void - Function to deposit the token.
+ ** @returns maxDepositForUser: bigint - The maximum amount the user can deposit.
+ *********************************************************************************************/
 export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 	const {sdk} = useSafeAppsSDK();
 	const {provider, isWalletSafe} = useWeb3();
@@ -91,21 +100,6 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 	});
 
 	/**********************************************************************************************
-	 ** The LEGACY version of the vaults no way to preview the deposit, so we will use the PPS
-	 ** value to simulate the effects of the deposit.
-	 *********************************************************************************************/
-	const {data: pricePerShare} = useReadContract({
-		address: args.vault,
-		abi: vaultAbi,
-		functionName: 'pricePerShare',
-		args: [],
-		chainId: args.chainID,
-		query: {
-			enabled: args.version === 'LEGACY'
-		}
-	});
-
-	/**********************************************************************************************
 	 ** The LEGACY version of the vaults has a method called availableDepositLimit: this function
 	 ** returns the maximum amount of underlying assets remaining to be deposited in the vault.
 	 ** We need this to be able to indicate to the user the maximum amount of tokens that can be
@@ -121,33 +115,6 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 			enabled: args.version === 'LEGACY'
 		}
 	});
-
-	/**********************************************************************************************
-	 ** For the LEGACY version of the vaults, we need to know the decimals to adjust the PPS value
-	 *********************************************************************************************/
-	const {data: decimals} = useReadContract({
-		address: args.vault,
-		abi: vaultAbi,
-		functionName: 'decimals',
-		args: [],
-		chainId: args.chainID,
-		query: {
-			enabled: args.version === 'LEGACY'
-		}
-	});
-
-	/**********************************************************************************************
-	 ** expectedOut is the expected amount of the token after the deposit. It is calculated based
-	 ** on the price per share for the LEGACY version of the vaults and the previewDeposit for the
-	 ** ERC-4626 version of the vaults.
-	 *********************************************************************************************/
-	const expectedOut = useMemo(() => {
-		if (args.version === 'LEGACY') {
-			return toBigInt((args.amountToDeposit / toBigInt(pricePerShare)) * 10n ** toBigInt(decimals));
-		}
-
-		return toBigInt(previewDeposit);
-	}, [args.version, args.amountToDeposit, previewDeposit, pricePerShare, decimals]);
 
 	/**********************************************************************************************
 	 ** canDeposit is a boolean that is true if the token can be deposited. It can be deposited if
@@ -405,7 +372,6 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 
 	return {
 		maxDepositForUser: toBigInt(maxDepositForUser),
-		expectedOut: toBigInt(expectedOut),
 		canDeposit,
 		isDepositing,
 		onDeposit
