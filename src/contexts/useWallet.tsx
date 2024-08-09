@@ -1,12 +1,14 @@
 'use client';
 
 import {createContext, memo, useCallback, useContext, useMemo} from 'react';
+import {serialize} from 'wagmi';
 import {useDeepCompareMemo, useLocalStorageValue} from '@react-hookz/web';
 
 import {useWeb3} from '../contexts/useWeb3';
 import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
 import {useBalances} from '../hooks/useBalances.multichains';
 import {DEFAULT_ERC20, ETH_TOKEN_ADDRESS, isZeroAddress, toAddress, zeroNormalizedBN} from '../utils';
+import {createUniqueID} from '../utils/tools.identifier';
 import {retrieveConfig} from '../utils/wagmi';
 import {toTokenListToken, toTToken, useTokenList} from './WithTokenList';
 
@@ -19,6 +21,7 @@ type TWalletContext = {
 	getToken: ({address, chainID}: TTokenAndChain) => TToken;
 	getBalance: ({address, chainID}: TTokenAndChain) => TNormalizedBN;
 	balances: TChainTokens;
+	balanceHash: string;
 	isLoading: boolean;
 	isLoadingOnCurrentChain: boolean;
 	isLoadingOnChain: (chainID?: number) => boolean;
@@ -34,6 +37,7 @@ const defaultProps = {
 	getToken: (): TToken => DEFAULT_ERC20,
 	getBalance: (): TNormalizedBN => zeroNormalizedBN,
 	balances: {},
+	balanceHash: '',
 	isLoading: true,
 	isLoadingOnCurrentChain: true,
 	isLoadingOnChain: (): boolean => true,
@@ -217,6 +221,16 @@ export const WalletContextApp = memo(function WalletContextApp(props: {
 		[chainID, chainLoadingStatus]
 	);
 
+	/**********************************************************************************************
+	 ** Balances is an object with multiple level of depth. We want to create a unique hash from
+	 ** it to know when it changes. This new hash will be used to trigger the useEffect hook.
+	 ** We will use classic hash function to create a hash from the balances object.
+	 *********************************************************************************************/
+	const balanceHash = useMemo(() => {
+		const hash = createUniqueID(serialize(balances));
+		return hash;
+	}, [balances]);
+
 	/***************************************************************************
 	 **	Setup and render the Context provider to use in the app.
 	 ***************************************************************************/
@@ -225,6 +239,7 @@ export const WalletContextApp = memo(function WalletContextApp(props: {
 			getToken,
 			getBalance,
 			balances,
+			balanceHash,
 			isLoading: isLoading || false,
 			isLoadingOnCurrentChain: chainLoadingStatus?.[chainID] || false,
 			isLoadingOnChain,
@@ -235,6 +250,7 @@ export const WalletContextApp = memo(function WalletContextApp(props: {
 			getToken,
 			getBalance,
 			balances,
+			balanceHash,
 			isLoading,
 			chainLoadingStatus,
 			chainID,
