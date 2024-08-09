@@ -4,7 +4,7 @@ import {useReadContract} from 'wagmi';
 
 import {isAddress, isEthAddress} from '../utils';
 import {approveERC20} from '../utils/wagmi';
-import {isSupportingPermit, signPermit} from './usePermit';
+import {isPermitSupported, signPermit} from './usePermit';
 
 import type {Connector} from 'wagmi';
 import type {TAddress} from '../types';
@@ -132,9 +132,10 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 
 			set_isApproving(true);
 			if (args.shouldUsePermit) {
-				const canUsePermit = await isSupportingPermit({
+				const canUsePermit = await isPermitSupported({
 					contractAddress: args.tokenToApprove,
-					chainID: args.chainID
+					chainID: args.chainID,
+					options: {disableExceptions: true}
 				});
 				if (canUsePermit) {
 					const signature = await signPermit({

@@ -271,10 +271,11 @@ export const signPermitDAI = async ({
 /**************************************************************************************************
  ** Checks if the given contract address supports permit.
  **************************************************************************************************/
-export async function isSupportingPermit(props: {
+export async function isPermitSupported(props: {
 	contractAddress: TAddress;
 	chainID: number;
 	permitVersion?: 1 | 2;
+	options?: {disableExceptions?: boolean};
 }): Promise<boolean> {
 	let {permitVersion} = props;
 	if (!permitVersion) {
@@ -293,7 +294,7 @@ export async function isSupportingPermit(props: {
 			(props.chainID === 137 &&
 				toAddress(props.contractAddress) === toAddress('0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063'))
 		) {
-			return true;
+			return !props?.options?.disableExceptions;
 		}
 	}
 
