@@ -1,8 +1,9 @@
 import assert from 'assert';
-import {erc20Abi, erc4626Abi, isAddressEqual} from 'viem';
+import {erc20Abi, isAddressEqual} from 'viem';
 import {readContract, sendTransaction, waitForTransactionReceipt} from '@wagmi/core';
 
 import {MAX_UINT_256} from '../../utils/constants';
+import {erc4626Abi} from '../abi/4626.abi';
 import {erc4626RouterAbi} from '../abi/4626Router.abi';
 import {usdtAbi, usdtAddress} from '../abi/usdt.abi';
 import {vaultAbi} from '../abi/vaultV2.abi';
