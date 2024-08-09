@@ -213,6 +213,13 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 			const tolerance = (availableShares * args.redeemTolerance) / 10000n; // X% of the balance
 			const isAskingToWithdrawAll = availableShares - convertToShare < tolerance;
 
+			console.warn({
+				convertToShare,
+				availableShares,
+				tolerance,
+				isAskingToWithdrawAll
+			});
+
 			const result = await withdrawFrom4626Vault({
 				connector: provider,
 				chainID: args.chainID,
