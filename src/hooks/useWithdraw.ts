@@ -17,6 +17,7 @@ type TUseWithdrawArgsBase = {
 	receiver?: TAddress;
 	amountToWithdraw: bigint;
 	chainID: number;
+	disabled?: boolean;
 };
 
 type TUseWithdrawArgsLegacy = TUseWithdrawArgsBase & {
@@ -83,7 +84,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		args: [args.owner],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && !args.disabled
 		}
 	});
 
@@ -99,7 +100,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		args: [args.owner],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && !args.disabled
 		}
 	});
 	const {data: convertToAssets} = useReadContract({
@@ -109,7 +110,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		args: [toBigInt(balanceOf)],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && balanceOf !== undefined
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && balanceOf !== undefined && !args.disabled
 		}
 	});
 

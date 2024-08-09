@@ -21,6 +21,7 @@ type TUseDepositArgsBase = {
 	receiver?: TAddress;
 	amountToDeposit: bigint;
 	chainID: number;
+	disabled?: boolean;
 };
 
 type TUseDepositArgsLegacy = TUseDepositArgsBase & {
@@ -79,7 +80,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 		args: [args.owner],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && !args.disabled
 		}
 	});
 
@@ -95,7 +96,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 		args: [args.amountToDeposit],
 		chainId: args.chainID,
 		query: {
-			enabled: args.version === 'ERC-4626'
+			enabled: args.version === 'ERC-4626' && !args.disabled
 		}
 	});
 
@@ -112,7 +113,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 		args: [],
 		chainId: args.chainID,
 		query: {
-			enabled: args.version === 'LEGACY'
+			enabled: args.version === 'LEGACY' && !args.disabled
 		}
 	});
 

@@ -17,6 +17,7 @@ type TUseApproveArgs = {
 	owner: TAddress; // Address that owns the token
 	amountToApprove: bigint; // Amount to approve
 	chainID: number; // Chain ID
+	disabled?: boolean;
 } & (
 	| {
 			shouldUsePermit: boolean; // Should use permit or not
@@ -48,7 +49,8 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 		abi: erc20Abi,
 		functionName: 'allowance',
 		args: [args.owner, args.spender],
-		chainId: args.chainID
+		chainId: args.chainID,
+		query: {enabled: !args.disabled}
 	});
 
 	/**********************************************************************************************
