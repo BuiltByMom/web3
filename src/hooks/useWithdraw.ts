@@ -1,10 +1,10 @@
 import {useCallback, useMemo, useState} from 'react';
-import {erc4626Abi} from 'viem';
 import {useReadContract} from 'wagmi';
 import {readContracts} from '@wagmi/core';
 
 import {useWeb3} from '../contexts/useWeb3';
 import {decodeAsBigInt, isAddress, isEthAddress} from '../utils';
+import {erc4626Abi} from '../utils/abi/4626.abi';
 import {toBigInt} from '../utils/format';
 import {retrieveConfig, toWagmiProvider, withdrawFrom4626Vault, withdrawFromVault} from '../utils/wagmi';
 
@@ -57,7 +57,9 @@ type TUseWithdrawResp = {
  ** @returns maxWithdrawForUser: bigint - The maximum amount that can be withdrawn by the user.
  **          This is exprimed in underlying token, so this means this is a shortcut for
  **          `vault.convertToAsset(vault.balanceOf(owner))`.
- ** @returns expectedOut: bigint - The expected amount of the token after the deposit.
+ ** @returns canWithdraw: boolean - If the token can be withdrawn.
+ ** @returns isWithdrawing: boolean - If the approval is in progress.
+ ** @returns onWithdraw: () => void - Function to withdraw the token.
  *********************************************************************************************/
 export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	const {provider} = useWeb3();
