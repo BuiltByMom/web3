@@ -44,7 +44,7 @@ export type TChainTokens = TNDict<TDict<TToken>>;
 /*******************************************************************************
  ** A classic Sort direction element
  ******************************************************************************/
-export type TSortDirection = 'asc' | 'desc' | '';
+export type TSortDirection = 'asc' | 'desc' | '' | null;
 
 /*******************************************************************************
  ** Default status to mimic wagmi hooks.
