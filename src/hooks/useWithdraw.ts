@@ -17,6 +17,9 @@ type TUseWithdrawArgsBase = {
 	receiver?: TAddress;
 	amountToWithdraw: bigint;
 	chainID: number;
+	options?: {
+		isOptimistic?: boolean;
+	};
 };
 
 type TUseWithdrawArgsLegacy = TUseWithdrawArgsBase & {
@@ -67,6 +70,7 @@ type TUseWithdrawResp = {
  *********************************************************************************************/
 export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	const {provider} = useWeb3();
+	const isOptimistic = args.options?.isOptimistic ?? true;
 	const [isWithdrawing, set_isWithdrawing] = useState(false);
 
 	/**********************************************************************************************
@@ -279,6 +283,19 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		]
 	);
 
+	if (
+		!isOptimistic &&
+		(balanceOf === undefined || convertToAssets === undefined || maxWithdrawForUser === undefined)
+	) {
+		return {
+			maxWithdrawForUser: 0n,
+			shareOf: 0n,
+			balanceOf: 0n,
+			canWithdraw: false,
+			isWithdrawing: false,
+			onWithdraw
+		};
+	}
 	return {
 		maxWithdrawForUser: toBigInt(maxWithdrawForUser),
 		shareOf: toBigInt(balanceOf),
