@@ -17,9 +17,6 @@ type TUseWithdrawArgsBase = {
 	receiver?: TAddress;
 	amountToWithdraw: bigint;
 	chainID: number;
-	options?: {
-		isOptimistic?: boolean;
-	};
 };
 
 type TUseWithdrawArgsLegacy = TUseWithdrawArgsBase & {
@@ -70,7 +67,6 @@ type TUseWithdrawResp = {
  *********************************************************************************************/
 export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	const {provider} = useWeb3();
-	const isOptimistic = args.options?.isOptimistic ?? true;
 	const [isWithdrawing, set_isWithdrawing] = useState(false);
 
 	/**********************************************************************************************
@@ -87,8 +83,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		args: [args.owner],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626',
-			staleTime: 1000
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
 		}
 	});
 
@@ -104,8 +99,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		args: [args.owner],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626',
-			staleTime: 1000
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626'
 		}
 	});
 	const {data: convertToAssets} = useReadContract({
@@ -115,8 +109,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		args: [toBigInt(balanceOf)],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && balanceOf !== undefined,
-			staleTime: 1000
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && balanceOf !== undefined
 		}
 	});
 
@@ -286,19 +279,6 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		]
 	);
 
-	if (
-		!isOptimistic &&
-		(balanceOf === undefined || convertToAssets === undefined || maxWithdrawForUser === undefined)
-	) {
-		return {
-			maxWithdrawForUser: 0n,
-			shareOf: 0n,
-			balanceOf: 0n,
-			canWithdraw: false,
-			isWithdrawing: false,
-			onWithdraw
-		};
-	}
 	return {
 		maxWithdrawForUser: toBigInt(maxWithdrawForUser),
 		shareOf: toBigInt(balanceOf),
