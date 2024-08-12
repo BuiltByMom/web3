@@ -128,7 +128,7 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	 *********************************************************************************************/
 	const onApprove = useCallback(
 		async (onSuccess?: () => void, onFailure?: () => void): Promise<boolean> => {
-			if (!canApprove || isEthAddress(args.tokenToApprove)) {
+			if (!canApprove) {
 				return false;
 			}
 

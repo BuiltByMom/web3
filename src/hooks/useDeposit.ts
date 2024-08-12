@@ -127,6 +127,9 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 	 ** 5. previewDeposit is defined and greater than 0
 	 *********************************************************************************************/
 	const canDeposit = useMemo(() => {
+		if (isEthAddress(args.tokenToDeposit)) {
+			return false;
+		}
 		if (args.version === 'LEGACY') {
 			return Boolean(
 				isAddress(args.tokenToDeposit) &&
@@ -137,13 +140,10 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 			);
 		}
 
-		if (isEthAddress(args.tokenToDeposit)) {
-			return false;
-		}
 		if (!isAddress(args.tokenToDeposit) || !isAddress(args.vault)) {
 			return false;
 		}
-		if (args.amountToDeposit <= 0n || args.amountToDeposit > toBigInt(maxDepositForUser)) {
+		if (args.amountToDeposit <= 0n || args.amountToDeposit <= toBigInt(maxDepositForUser)) {
 			return false;
 		}
 		return Boolean(previewDeposit && toBigInt(previewDeposit) > 0n);
