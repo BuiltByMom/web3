@@ -189,7 +189,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 				throw new Error('Invalid minOutSlippage');
 			}
 			if (args.redeemTolerance < 0n || args.redeemTolerance > 10000n) {
-				throw new Error('Invalid minOutSlippage');
+				throw new Error('Invalid redeemTolerance');
 			}
 
 			/**********************************************************************************************
