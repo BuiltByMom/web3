@@ -123,17 +123,17 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	 ** 4. If the amount to withdraw is greater than 0 and less than the max withdraw for the user
 	 *********************************************************************************************/
 	const canWithdraw = useMemo(() => {
+		if (isEthAddress(args.tokenToWithdraw)) {
+			return false;
+		}
 		if (args.version === 'LEGACY') {
 			return Boolean(isAddress(args.tokenToWithdraw) && isAddress(args.vault) && args.amountToWithdraw > 0n);
 		}
 
-		if (isEthAddress(args.tokenToWithdraw)) {
-			return false;
-		}
 		if (!isAddress(args.tokenToWithdraw) || !isAddress(args.vault)) {
 			return false;
 		}
-		if (args.amountToWithdraw <= 0n || args.amountToWithdraw > toBigInt(maxWithdrawForUser)) {
+		if (args.amountToWithdraw <= 0n || args.amountToWithdraw <= toBigInt(maxWithdrawForUser)) {
 			return false;
 		}
 		return true;
