@@ -20,6 +20,41 @@ export const vaultAbi = [
 		type: 'event'
 	},
 	{
+		name: 'Deposit',
+		inputs: [
+			{name: 'recipient', type: 'address', indexed: true},
+			{name: 'shares', type: 'uint256', indexed: false},
+			{name: 'amount', type: 'uint256', indexed: false}
+		],
+		anonymous: false,
+		type: 'event'
+	},
+	{
+		name: 'Withdraw',
+		inputs: [
+			{name: 'recipient', type: 'address', indexed: true},
+			{name: 'shares', type: 'uint256', indexed: false},
+			{name: 'amount', type: 'uint256', indexed: false}
+		],
+		anonymous: false,
+		type: 'event'
+	},
+	{
+		name: 'Sweep',
+		inputs: [
+			{name: 'token', type: 'address', indexed: true},
+			{name: 'amount', type: 'uint256', indexed: false}
+		],
+		anonymous: false,
+		type: 'event'
+	},
+	{
+		name: 'LockedProfitDegradationUpdated',
+		inputs: [{name: 'value', type: 'uint256', indexed: false}],
+		anonymous: false,
+		type: 'event'
+	},
+	{
 		name: 'StrategyAdded',
 		inputs: [
 			{name: 'strategy', type: 'address', indexed: true},
@@ -43,6 +78,27 @@ export const vaultAbi = [
 			{name: 'totalDebt', type: 'uint256', indexed: false},
 			{name: 'debtAdded', type: 'uint256', indexed: false},
 			{name: 'debtRatio', type: 'uint256', indexed: false}
+		],
+		anonymous: false,
+		type: 'event'
+	},
+	{
+		name: 'FeeReport',
+		inputs: [
+			{name: 'management_fee', type: 'uint256', indexed: false},
+			{name: 'performance_fee', type: 'uint256', indexed: false},
+			{name: 'strategist_fee', type: 'uint256', indexed: false},
+			{name: 'duration', type: 'uint256', indexed: false}
+		],
+		anonymous: false,
+		type: 'event'
+	},
+	{
+		name: 'WithdrawFromStrategy',
+		inputs: [
+			{name: 'strategy', type: 'address', indexed: true},
+			{name: 'totalDebt', type: 'uint256', indexed: false},
+			{name: 'loss', type: 'uint256', indexed: false}
 		],
 		anonymous: false,
 		type: 'event'
@@ -165,6 +221,12 @@ export const vaultAbi = [
 		type: 'event'
 	},
 	{
+		name: 'NewPendingGovernance',
+		inputs: [{name: 'pendingGovernance', type: 'address', indexed: true}],
+		anonymous: false,
+		type: 'event'
+	},
+	{
 		stateMutability: 'nonpayable',
 		type: 'function',
 		name: 'initialize',
@@ -207,6 +269,13 @@ export const vaultAbi = [
 		outputs: []
 	},
 	{stateMutability: 'pure', type: 'function', name: 'apiVersion', inputs: [], outputs: [{name: '', type: 'string'}]},
+	{
+		stateMutability: 'view',
+		type: 'function',
+		name: 'DOMAIN_SEPARATOR',
+		inputs: [],
+		outputs: [{name: '', type: 'bytes32'}]
+	},
 	{
 		stateMutability: 'nonpayable',
 		type: 'function',
@@ -398,7 +467,35 @@ export const vaultAbi = [
 		stateMutability: 'nonpayable',
 		type: 'function',
 		name: 'withdraw',
+		inputs: [],
+		outputs: [{name: '', type: 'uint256'}]
+	},
+	{
+		stateMutability: 'nonpayable',
+		type: 'function',
+		name: 'withdraw',
 		inputs: [{name: 'maxShares', type: 'uint256'}],
+		outputs: [{name: '', type: 'uint256'}]
+	},
+	{
+		stateMutability: 'nonpayable',
+		type: 'function',
+		name: 'withdraw',
+		inputs: [
+			{name: 'maxShares', type: 'uint256'},
+			{name: 'recipient', type: 'address'}
+		],
+		outputs: [{name: '', type: 'uint256'}]
+	},
+	{
+		stateMutability: 'nonpayable',
+		type: 'function',
+		name: 'withdraw',
+		inputs: [
+			{name: 'maxShares', type: 'uint256'},
+			{name: 'recipient', type: 'address'},
+			{name: 'maxLoss', type: 'uint256'}
+		],
 		outputs: [{name: '', type: 'uint256'}]
 	},
 	{
@@ -607,15 +704,21 @@ export const vaultAbi = [
 		name: 'strategies',
 		inputs: [{name: 'arg0', type: 'address'}],
 		outputs: [
-			{name: 'performanceFee', type: 'uint256'},
-			{name: 'activation', type: 'uint256'},
-			{name: 'debtRatio', type: 'uint256'},
-			{name: 'minDebtPerHarvest', type: 'uint256'},
-			{name: 'maxDebtPerHarvest', type: 'uint256'},
-			{name: 'lastReport', type: 'uint256'},
-			{name: 'totalDebt', type: 'uint256'},
-			{name: 'totalGain', type: 'uint256'},
-			{name: 'totalLoss', type: 'uint256'}
+			{
+				name: '',
+				type: 'tuple',
+				components: [
+					{name: 'performanceFee', type: 'uint256'},
+					{name: 'activation', type: 'uint256'},
+					{name: 'debtRatio', type: 'uint256'},
+					{name: 'minDebtPerHarvest', type: 'uint256'},
+					{name: 'maxDebtPerHarvest', type: 'uint256'},
+					{name: 'lastReport', type: 'uint256'},
+					{name: 'totalDebt', type: 'uint256'},
+					{name: 'totalGain', type: 'uint256'},
+					{name: 'totalLoss', type: 'uint256'}
+				]
+			}
 		]
 	},
 	{
@@ -640,6 +743,7 @@ export const vaultAbi = [
 		outputs: [{name: '', type: 'uint256'}]
 	},
 	{stateMutability: 'view', type: 'function', name: 'debtRatio', inputs: [], outputs: [{name: '', type: 'uint256'}]},
+	{stateMutability: 'view', type: 'function', name: 'totalIdle', inputs: [], outputs: [{name: '', type: 'uint256'}]},
 	{stateMutability: 'view', type: 'function', name: 'totalDebt', inputs: [], outputs: [{name: '', type: 'uint256'}]},
 	{stateMutability: 'view', type: 'function', name: 'lastReport', inputs: [], outputs: [{name: '', type: 'uint256'}]},
 	{stateMutability: 'view', type: 'function', name: 'activation', inputs: [], outputs: [{name: '', type: 'uint256'}]},
@@ -678,12 +782,5 @@ export const vaultAbi = [
 		name: 'nonces',
 		inputs: [{name: 'arg0', type: 'address'}],
 		outputs: [{name: '', type: 'uint256'}]
-	},
-	{
-		stateMutability: 'view',
-		type: 'function',
-		name: 'DOMAIN_SEPARATOR',
-		inputs: [],
-		outputs: [{name: '', type: 'bytes32'}]
 	}
 ] as const;
