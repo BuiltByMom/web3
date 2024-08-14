@@ -93,24 +93,50 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 	 ** amount of tokens the user has. To get the amount of tokens the user has, we need to call
 	 ** the convertToAssets function once we have the balanceOf.
 	 *********************************************************************************************/
-	const {data: balanceOf, refetch: refetchBalanceOf} = useReadContract({
+	const {data: shareOf, refetch: refetchBalanceOf} = useReadContract({
 		address: args.vault,
 		abi: erc4626Abi,
 		functionName: 'balanceOf',
 		args: [args.owner],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && !args.disabled
+			enabled: isAddress(args.owner) && !args.disabled
 		}
 	});
 	const {data: convertToAssets} = useReadContract({
 		address: args.vault,
 		abi: erc4626Abi,
 		functionName: 'convertToAssets',
-		args: [toBigInt(balanceOf)],
+		args: [toBigInt(shareOf)],
 		chainId: args.chainID,
 		query: {
-			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && balanceOf !== undefined && !args.disabled
+			enabled: isAddress(args.owner) && args.version === 'ERC-4626' && shareOf !== undefined && !args.disabled
+		}
+	});
+	const {data: decimals} = useReadContract({
+		address: args.vault,
+		abi: erc4626Abi,
+		functionName: 'decimals',
+		chainId: args.chainID,
+		query: {
+			enabled: isAddress(args.owner) && args.version === 'LEGACY' && shareOf !== undefined && !args.disabled
+		}
+	});
+	const {data: ppsBalanceOf} = useReadContract({
+		address: args.vault,
+		abi: erc4626Abi,
+		functionName: 'pricePerShare',
+		chainId: args.chainID,
+		query: {
+			enabled:
+				isAddress(args.owner) &&
+				args.version === 'LEGACY' &&
+				shareOf !== undefined &&
+				decimals !== undefined &&
+				!args.disabled,
+			select(pricePerShare) {
+				return (toBigInt(shareOf) * pricePerShare) / 10n ** toBigInt(decimals);
+			}
 		}
 	});
 
@@ -294,8 +320,8 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 
 	return {
 		maxWithdrawForUser: toBigInt(maxWithdrawForUser),
-		shareOf: toBigInt(balanceOf),
-		balanceOf: toBigInt(convertToAssets),
+		shareOf: toBigInt(shareOf),
+		balanceOf: args.version === 'ERC-4626' ? toBigInt(convertToAssets) : toBigInt(ppsBalanceOf),
 		canWithdraw,
 		isWithdrawing,
 		onWithdraw
