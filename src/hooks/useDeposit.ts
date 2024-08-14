@@ -262,6 +262,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 				} else {
 					onFailure?.();
 				}
+				set_isDepositing(false);
 				return result.isSuccessful;
 			}
 
