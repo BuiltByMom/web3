@@ -12,7 +12,7 @@ import {
 	safeWallet,
 	walletConnectWallet
 } from '@rainbow-me/rainbowkit/wallets';
-import {createStorage, custom, fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
+import {custom, fallback, http, injected, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
 import {getNetwork} from './utils';
@@ -125,10 +125,10 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 				]
 			}
 		],
-		storage: createStorage({
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-			storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
-		}),
+		// storage: createStorage({
+		// 	// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+		// 	storage: typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : noopStorage
+		// }),
 		transports: transports
 	});
 
