@@ -11,7 +11,7 @@ import {
 } from 'wagmi';
 import {Clusters, getImageUrl} from '@clustersxyz/sdk';
 import {useAccountModal, useChainModal, useConnectModal} from '@rainbow-me/rainbowkit';
-import {useIsMounted, useMountEffect, useUpdateEffect} from '@react-hookz/web';
+import {useIsMounted, useUpdateEffect} from '@react-hookz/web';
 
 import {useAsyncTrigger} from '../hooks/useAsyncTrigger';
 import {isAddress} from '../utils';
@@ -89,16 +89,6 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 		set_currentChainID(chain?.id);
 	}, [chain]);
 
-	useMountEffect(async (): Promise<void> => {
-		if (isIframe()) {
-			const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
-			if (ledgerConnector) {
-				await connectAsync({connector: ledgerConnector, chainId: chain?.id || props.defaultNetwork?.id || 1});
-				return;
-			}
-		}
-	});
-
 	useAsyncTrigger(async () => {
 		if (typeof window === 'undefined') {
 			return;
@@ -123,6 +113,18 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 				if (!isAuth) {
 					await connectAsync({connector: safeConnector});
 				}
+			}
+		} else if (isIframe() && !connector) {
+			const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
+			if (!ancestorOrigin.toString().includes('safe')) {
+				const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+				if (ledgerConnector) {
+					await connectAsync({connector: ledgerConnector});
+				}
+			}
+			const safeConnector = connectors.find((c): boolean => c.id === 'safe');
+			if (safeConnector) {
+				await connectAsync({connector: safeConnector});
 			}
 		}
 	}, [connectAsync, connectors, disconnectAsync, connector]);
