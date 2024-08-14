@@ -130,10 +130,17 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 			return Boolean(isAddress(args.tokenToWithdraw) && isAddress(args.vault) && args.amountToWithdraw > 0n);
 		}
 
+		// If the tokenToWithdraw is not a valid address
+		// If the vault is not a valid address
+		// Then FALSE
 		if (!isAddress(args.tokenToWithdraw) || !isAddress(args.vault)) {
 			return false;
 		}
-		if (args.amountToWithdraw <= 0n || args.amountToWithdraw <= toBigInt(maxWithdrawForUser)) {
+
+		// If the amountToWithdraw is less than or equal to 0
+		// If the amountToWithdraw is less than or equal to the maxWithdrawForUser
+		// Then FALSE
+		if (args.amountToWithdraw <= 0n || args.amountToWithdraw >= toBigInt(maxWithdrawForUser)) {
 			return false;
 		}
 		return true;

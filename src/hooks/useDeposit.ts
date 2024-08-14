@@ -130,6 +130,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 		if (isEthAddress(args.tokenToDeposit)) {
 			return false;
 		}
+
 		if (args.version === 'LEGACY') {
 			return Boolean(
 				isAddress(args.tokenToDeposit) &&
@@ -140,10 +141,17 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 			);
 		}
 
+		// If the tokenToDeposit is not a valid address
+		// If the vault is not a valid address
+		// Then FALSE
 		if (!isAddress(args.tokenToDeposit) || !isAddress(args.vault)) {
 			return false;
 		}
-		if (args.amountToDeposit <= 0n || args.amountToDeposit <= toBigInt(maxDepositForUser)) {
+
+		// If the amountToDeposit is less than or equal to 0
+		// If the amountToDeposit is less than or equal to the maxDepositForUser
+		// Then FALSE
+		if (args.amountToDeposit <= 0n || args.amountToDeposit >= toBigInt(maxDepositForUser)) {
 			return false;
 		}
 		return Boolean(previewDeposit && toBigInt(previewDeposit) > 0n);
