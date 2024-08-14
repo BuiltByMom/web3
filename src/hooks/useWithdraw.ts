@@ -232,6 +232,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 				} else {
 					onFailure?.();
 				}
+				set_isWithdrawing(false);
 				return result.isSuccessful;
 			}
 
