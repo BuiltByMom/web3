@@ -1,6 +1,6 @@
 {
   "name": "@builtbymom/web3",
-  "version": "0.0.192",
+  "version": "0.0.193",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "private": false,

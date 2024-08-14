@@ -3,6 +3,7 @@ import {WagmiProvider} from 'wagmi';
 import {RainbowKitProvider} from '@rainbow-me/rainbowkit';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
+import {isIframe} from '../utils';
 import {getConfig} from '../utils/wagmi/config';
 import {Web3ContextApp} from './useWeb3';
 import {WithTokenList} from './WithTokenList';
@@ -38,7 +39,9 @@ function WithMom({children, supportedChains, defaultNetwork, tokenLists, rainbow
 	const config = useMemo((): Config => getConfig({chains: supportedChains}), [supportedChains]);
 
 	return (
-		<WagmiProvider config={config}>
+		<WagmiProvider
+			config={config}
+			reconnectOnMount={!isIframe()}>
 			<QueryClientProvider client={queryClient}>
 				<RainbowKitProvider {...rainbowConfig}>
 					<Web3ContextApp defaultNetwork={defaultNetwork}>
