@@ -216,7 +216,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 				 ** the amount of TOKEN to the amount of shares based on the price per share.
 				 *****************************************************************************************/
 				const convertToShare =
-					(args.amountToWithdraw / toBigInt(pps?.pricePerShare)) * 10n ** toBigInt(decimals);
+					(args.amountToWithdraw * 10n ** toBigInt(decimals)) / toBigInt(pps?.pricePerShare);
 				const tolerance = (toBigInt(shareOf) * args.redeemTolerance) / 10000n; // X% of the balance
 				const isAskingToWithdrawAll = toBigInt(shareOf) - convertToShare < tolerance;
 
