@@ -18,18 +18,17 @@ type TUseWithdrawArgsBase = {
 	amountToWithdraw: bigint;
 	chainID: number;
 	disabled?: boolean;
+	redeemTolerance: bigint;
 };
 
 type TUseWithdrawArgsLegacy = TUseWithdrawArgsBase & {
 	version: 'LEGACY';
 	minOutSlippage?: undefined;
-	redeemTolerance?: undefined;
 };
 
 type TUseWithdrawArgsERC4626 = TUseWithdrawArgsBase & {
 	version: 'ERC-4626';
 	minOutSlippage: bigint;
-	redeemTolerance: bigint;
 };
 
 type TUseWithdrawArgs = TUseWithdrawArgsLegacy | TUseWithdrawArgsERC4626;
@@ -122,7 +121,7 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 			enabled: isAddress(args.owner) && args.version === 'LEGACY' && shareOf !== undefined && !args.disabled
 		}
 	});
-	const {data: ppsBalanceOf} = useReadContract({
+	const {data: pps} = useReadContract({
 		address: args.vault,
 		abi: erc4626Abi,
 		functionName: 'pricePerShare',
@@ -135,7 +134,10 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 				decimals !== undefined &&
 				!args.disabled,
 			select(pricePerShare) {
-				return (toBigInt(shareOf) * pricePerShare) / 10n ** toBigInt(decimals);
+				return {
+					balanceOf: (toBigInt(shareOf) * pricePerShare) / 10n ** toBigInt(decimals),
+					pricePerShare: pricePerShare
+				};
 			}
 		}
 	});
@@ -199,17 +201,31 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 				return false;
 			}
 
+			if (args.redeemTolerance < 0n || args.redeemTolerance > 10000n) {
+				throw new Error('Invalid redeemTolerance');
+			}
+
 			/**********************************************************************************************
 			 ** If the version is LEGACY, then we can directly deposit the token into the vault. We cannot
 			 ** use fancy stuff like permit or router.
 			 *********************************************************************************************/
 			if (args.version === 'LEGACY') {
+				/******************************************************************************************
+				 ** args.amountToWithdraw is the amount of TOKEN the user wants to get back. However, the
+				 ** function expects the amount of shares the user wants to get back. We need to convert
+				 ** the amount of TOKEN to the amount of shares based on the price per share.
+				 *****************************************************************************************/
+				const convertToShare =
+					(args.amountToWithdraw / toBigInt(pps?.pricePerShare)) * 10n ** toBigInt(decimals);
+				const tolerance = (toBigInt(shareOf) * args.redeemTolerance) / 10000n; // X% of the balance
+				const isAskingToWithdrawAll = toBigInt(shareOf) - convertToShare < tolerance;
+
 				const result = await withdrawFromVault({
 					connector: provider,
 					chainID: args.chainID,
 					contractAddress: args.vault,
 					receiver: isAddress(args.receiver) ? args.receiver : args.owner,
-					amount: args.amountToWithdraw
+					amount: isAskingToWithdrawAll ? toBigInt(shareOf) : convertToShare
 				});
 				if (result.isSuccessful) {
 					onSuccess?.();
@@ -225,9 +241,6 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 			 *********************************************************************************************/
 			if (args.minOutSlippage < 0n || args.minOutSlippage > 10000n) {
 				throw new Error('Invalid minOutSlippage');
-			}
-			if (args.redeemTolerance < 0n || args.redeemTolerance > 10000n) {
-				throw new Error('Invalid redeemTolerance');
 			}
 
 			/**********************************************************************************************
@@ -305,23 +318,26 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		[
 			canWithdraw,
 			provider,
+			args.redeemTolerance,
 			args.version,
 			args.minOutSlippage,
-			args.redeemTolerance,
 			args.vault,
 			args.chainID,
 			args.amountToWithdraw,
 			args.receiver,
 			args.owner,
 			refetchMaxWithdrawForUser,
-			refetchBalanceOf
+			refetchBalanceOf,
+			pps?.pricePerShare,
+			decimals,
+			shareOf
 		]
 	);
 
 	return {
 		maxWithdrawForUser: toBigInt(maxWithdrawForUser),
 		shareOf: toBigInt(shareOf),
-		balanceOf: args.version === 'ERC-4626' ? toBigInt(convertToAssets) : toBigInt(ppsBalanceOf),
+		balanceOf: args.version === 'ERC-4626' ? toBigInt(convertToAssets) : toBigInt(pps?.balanceOf),
 		canWithdraw,
 		isWithdrawing,
 		onWithdraw
