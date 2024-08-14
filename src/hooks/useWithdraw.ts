@@ -138,9 +138,14 @@ export function useVaultWithdraw(args: TUseWithdrawArgs): TUseWithdrawResp {
 		}
 
 		// If the amountToWithdraw is less than or equal to 0
-		// If the amountToWithdraw is less than or equal to the maxWithdrawForUser
 		// Then FALSE
-		if (args.amountToWithdraw <= 0n || args.amountToWithdraw >= toBigInt(maxWithdrawForUser)) {
+		if (args.amountToWithdraw <= 0n) {
+			return false;
+		}
+
+		// If the amountToWithdraw is more than the maxWithdrawForUser
+		// Then FALSE
+		if (args.amountToWithdraw > toBigInt(maxWithdrawForUser)) {
 			return false;
 		}
 		return true;

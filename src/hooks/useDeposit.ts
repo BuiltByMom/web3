@@ -149,9 +149,14 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 		}
 
 		// If the amountToDeposit is less than or equal to 0
-		// If the amountToDeposit is less than or equal to the maxDepositForUser
 		// Then FALSE
-		if (args.amountToDeposit <= 0n || args.amountToDeposit >= toBigInt(maxDepositForUser)) {
+		if (args.amountToDeposit <= 0n) {
+			return false;
+		}
+
+		// If the amountToDeposit is more than the maxDepositForUser
+		// Then FALSE
+		if (args.amountToDeposit > toBigInt(maxDepositForUser)) {
 			return false;
 		}
 		return Boolean(previewDeposit && toBigInt(previewDeposit) > 0n);
