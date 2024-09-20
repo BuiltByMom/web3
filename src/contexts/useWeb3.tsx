@@ -176,7 +176,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 				console.warn('Impossible to open account modal');
 			}
 		} else {
-			const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+			const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
 			if (isIframe() && ledgerConnector) {
 				await connectAsync({connector: ledgerConnector, chainId: currentChainID});
 				return;
@@ -227,9 +227,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 		isActive: isConnected && [...supportedChainsID, 1337].includes(chain?.id || -1) && isMounted(),
 		isWalletSafe: connector?.id === 'safe' || (connector as any)?._wallets?.[0]?.id === 'safe',
 		isWalletLedger:
-			connector?.id === 'ledger' ||
-			(connector as any)?._wallets?.[0]?.id === 'ledger' ||
-			connector?.id === 'ledgerLive',
+			connector?.id.toLowerCase().includes('ledger') || (connector as any)?._wallets?.[0]?.id === 'ledger',
 		lensProtocolHandle: '',
 		hasProvider: !!(walletClient || publicClient),
 		provider: connector,
