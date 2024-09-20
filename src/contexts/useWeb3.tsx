@@ -94,10 +94,10 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 			return;
 		}
 
-		if (isIframe() && connector && connector?.id !== 'safe' && connector?.id !== 'ledgerLive') {
+		if (isIframe() && connector && connector?.id !== 'safe' && !connector?.id?.toLowerCase().includes('ledger')) {
 			const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
 			if (!ancestorOrigin.toString().includes('safe')) {
-				const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+				const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
 				if (ledgerConnector) {
 					await disconnectAsync({connector: connector});
 					const isAuth = await ledgerConnector.isAuthorized();
@@ -117,7 +117,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 		} else if (isIframe() && !connector) {
 			const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
 			if (!ancestorOrigin.toString().includes('safe')) {
-				const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+				const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
 				if (ledgerConnector) {
 					await connectAsync({connector: ledgerConnector});
 				}
@@ -130,7 +130,7 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 	}, [connectAsync, connectors, disconnectAsync, connector]);
 
 	const onConnect = useCallback(async (): Promise<void> => {
-		const ledgerConnector = connectors.find((c): boolean => c.id === 'ledgerLive');
+		const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
 		if (isIframe() && ledgerConnector) {
 			await connectAsync({connector: ledgerConnector, chainId: currentChainID});
 			return;
