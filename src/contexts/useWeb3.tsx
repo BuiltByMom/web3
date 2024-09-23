@@ -94,38 +94,47 @@ export const Web3ContextApp = (props: {children: ReactElement; defaultNetwork?: 
 			return;
 		}
 
-		if (isIframe() && connector && connector?.id !== 'safe' && !connector?.id?.toLowerCase().includes('ledger')) {
-			const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
-			if (!ancestorOrigin.toString().includes('safe')) {
-				const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
-				if (ledgerConnector) {
+		try {
+			if (
+				isIframe() &&
+				connector &&
+				connector?.id !== 'safe' &&
+				!connector?.id?.toLowerCase().includes('ledger')
+			) {
+				const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
+				if (!ancestorOrigin.toString().includes('safe')) {
+					const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
+					if (ledgerConnector) {
+						await disconnectAsync({connector: connector});
+						const isAuth = await ledgerConnector.isAuthorized();
+						if (!isAuth) {
+							await connectAsync({connector: ledgerConnector});
+						}
+					}
+				}
+				const safeConnector = connectors.find((c): boolean => c.id === 'safe');
+				if (safeConnector) {
 					await disconnectAsync({connector: connector});
-					const isAuth = await ledgerConnector.isAuthorized();
+					const isAuth = await safeConnector.isAuthorized();
 					if (!isAuth) {
+						await connectAsync({connector: safeConnector});
+					}
+				}
+			} else if (isIframe() && !connector) {
+				const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
+				if (!ancestorOrigin.toString().includes('safe')) {
+					const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
+					if (ledgerConnector) {
 						await connectAsync({connector: ledgerConnector});
 					}
 				}
-			}
-			const safeConnector = connectors.find((c): boolean => c.id === 'safe');
-			if (safeConnector) {
-				await disconnectAsync({connector: connector});
-				const isAuth = await safeConnector.isAuthorized();
-				if (!isAuth) {
+				const safeConnector = connectors.find((c): boolean => c.id === 'safe');
+				if (safeConnector) {
 					await connectAsync({connector: safeConnector});
 				}
 			}
-		} else if (isIframe() && !connector) {
-			const ancestorOrigin = typeof window !== 'undefined' && window.location.ancestorOrigins[0];
-			if (!ancestorOrigin.toString().includes('safe')) {
-				const ledgerConnector = connectors.find((c): boolean => c.id.toLowerCase().includes('ledger'));
-				if (ledgerConnector) {
-					await connectAsync({connector: ledgerConnector});
-				}
-			}
-			const safeConnector = connectors.find((c): boolean => c.id === 'safe');
-			if (safeConnector) {
-				await connectAsync({connector: safeConnector});
-			}
+		} catch (error) {
+			console.error(error);
 		}
 	}, [connectAsync, connectors, disconnectAsync, connector]);
 

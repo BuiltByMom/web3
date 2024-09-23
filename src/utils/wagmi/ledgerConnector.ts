@@ -261,14 +261,13 @@ export const legderLiveIFrameWallet = ({projectId}: MyWalletOptions): Wallet => 
 		// Only allowed in iframe context
 		// borrowed from wagmi safe connector
 		!(typeof window === 'undefined') && window?.parent !== window,
-	createConnector: getInjectedConnector({flag: 'isLedgerLive' as WalletProviderFlags}) || ledger({projectId})
-
-	// createConnector: (walletDetails: WalletDetailsParams) => {
-	// 	return createConnector(config => ({
-	// 		...ledger({projectId})(config),
-	// 		...walletDetails
-	// 	}));
-	// }
+	// createConnector: getInjectedConnector({flag: 'isLedgerLive' as WalletProviderFlags}) || ledger({projectId})
+	createConnector: (walletDetails: WalletDetailsParams) => {
+		return createConnector(config => ({
+			...ledger({projectId})(config),
+			...walletDetails
+		}));
+	}
 });
 
 /*
