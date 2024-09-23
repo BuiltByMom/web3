@@ -3,11 +3,13 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/naming-convention */
 import {getAddress, numberToHex, type ProviderRpcError, SwitchChainError, UserRejectedRequestError} from 'viem';
+import {getInjectedConnector} from '@rainbow-me/rainbowkit/dist/wallets/getInjectedConnector';
 import {createConnector, normalizeChainId} from '@wagmi/core';
 import {type EthereumProviderOptions} from '@walletconnect/ethereum-provider';
 
 import type {EthereumProvider} from '@ledgerhq/connect-kit/dist/umd/index.d.ts';
-import type {Wallet, WalletDetailsParams} from '@rainbow-me/rainbowkit';
+import type {Wallet} from '@rainbow-me/rainbowkit';
+import type {WalletProviderFlags} from '@rainbow-me/rainbowkit/dist/types/utils';
 import type {Evaluate} from '@wagmi/core/internal';
 
 type LedgerConnectorWcV2Options = {
@@ -258,10 +260,12 @@ export const legderLiveIFrameWallet = ({projectId}: MyWalletOptions): Wallet => 
 		// Only allowed in iframe context
 		// borrowed from wagmi safe connector
 		!(typeof window === 'undefined') && window?.parent !== window,
-	createConnector: (walletDetails: WalletDetailsParams) => {
-		return createConnector(config => ({
-			...ledger({projectId})(config),
-			...walletDetails
-		}));
-	}
+	createConnector: getInjectedConnector({flag: 'isLedgerLive' as WalletProviderFlags}) || ledger({projectId})
+
+	// createConnector: (walletDetails: WalletDetailsParams) => {
+	// 	return createConnector(config => ({
+	// 		...ledger({projectId})(config),
+	// 		...walletDetails
+	// 	}));
+	// }
 });
