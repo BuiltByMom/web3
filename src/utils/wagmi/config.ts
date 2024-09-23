@@ -15,7 +15,6 @@ import {
 import {createStorage, custom, fallback, http, injected, noopStorage, unstable_connector, webSocket} from '@wagmi/core';
 import {type Config} from '@wagmi/core';
 
-import {legderLiveIFrameWallet} from './ledgerConnector';
 import {getNetwork} from './utils';
 
 import type {Transport} from 'viem';
@@ -122,8 +121,7 @@ export function getConfig({chains}: {chains: Chain[]}): Config {
 					rainbowWallet,
 					ledgerWallet,
 					coinbaseWallet,
-					safeWallet,
-					legderLiveIFrameWallet
+					safeWallet
 				]
 			}
 		],
