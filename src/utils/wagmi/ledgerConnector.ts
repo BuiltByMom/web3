@@ -1,0 +1,318 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
+/* eslint-disable prefer-destructuring */
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-disable @typescript-eslint/naming-convention */
+import {getAddress, numberToHex, type ProviderRpcError, SwitchChainError, UserRejectedRequestError} from 'viem';
+import {createConnector, normalizeChainId} from '@wagmi/core';
+import {type EthereumProviderOptions} from '@walletconnect/ethereum-provider';
+
+import type {EthereumProvider} from '@ledgerhq/connect-kit/dist/umd/index.d.ts';
+import type {Wallet, WalletDetailsParams} from '@rainbow-me/rainbowkit';
+import type {Evaluate} from '@wagmi/core/internal';
+
+type LedgerConnectorWcV2Options = {
+	enableDebugLogs?: boolean;
+	walletConnectVersion?: 2;
+	projectId?: EthereumProviderOptions['projectId'];
+	requiredChains?: number[];
+	requiredMethods?: string[];
+	optionalMethods?: string[];
+	requiredEvents?: string[];
+	optionalEvents?: string[];
+};
+
+export type LedgerParameters = Evaluate<
+	LedgerConnectorWcV2Options & {
+		enableDebugLogs?: boolean;
+		/**
+     Target chain to connect to.
+     */
+		chainId?: number | undefined;
+	}
+>;
+
+ledger.type = 'ledger' as const;
+export function ledger(parameters: LedgerParameters) {
+	type Provider = EthereumProvider;
+	type Properties = {
+		createProvider: any;
+		initProvider: any;
+		setupListeners: any;
+		removeListeners: any;
+	};
+
+	let provider_: Provider | undefined;
+	let initProviderPromise: Promise<void>;
+	const enableDebugLogs = parameters.enableDebugLogs ?? false;
+
+	return createConnector<Provider, Properties>(config => ({
+		id: 'ledger',
+		name: 'Ledger',
+		type: ledger.type,
+		async connect({chainId}: {chainId?: number} = {}) {
+			try {
+				const provider = await this.getProvider();
+				this.setupListeners();
+
+				// Don't request accounts if we have a session, like when reloading with
+				// an active WC v2 session
+				if (!provider.session) {
+					config.emitter.emit('message', {type: 'connecting'});
+
+					await provider.request({
+						method: 'eth_requestAccounts'
+					});
+				}
+
+				const accounts = await this.getAccounts();
+				let id = await this.getChainId();
+
+				if (chainId && id !== chainId) {
+					const chain = await this.switchChain!({chainId}).catch(() => ({
+						id
+					}));
+					id = chain.id;
+				}
+
+				return {
+					accounts,
+					chainId: id,
+					provider
+				};
+			} catch (error) {
+				console.error(error);
+				if (/user rejected/i.test((error as ProviderRpcError)?.message)) {
+					throw new UserRejectedRequestError(error as Error);
+				}
+				throw error;
+			}
+		},
+
+		async disconnect() {
+			const provider = await this.getProvider();
+			try {
+				if (provider?.disconnect) {
+					await provider.disconnect();
+				}
+			} catch (error) {
+				if (!/No matching key/i.test((error as Error).message)) {
+					throw error;
+				}
+			} finally {
+				this.removeListeners();
+			}
+		},
+
+		async getAccounts() {
+			const provider = await this.getProvider();
+			const accounts = (await provider.request({
+				method: 'eth_accounts'
+			})) as string[];
+			return accounts.map(getAddress);
+		},
+
+		async getChainId() {
+			const provider = await this.getProvider();
+			const chainId = (await provider.request({
+				method: 'eth_chainId'
+			})) as number;
+
+			return normalizeChainId(chainId);
+		},
+
+		async getProvider({chainId} = {}) {
+			if (!provider_) {
+				await this.createProvider();
+			}
+
+			if (chainId) {
+				await this.switchChain?.({chainId});
+			}
+			return provider_!;
+		},
+
+		async isAuthorized() {
+			try {
+				const accounts = await this.getAccounts();
+
+				return !!accounts.length;
+			} catch {
+				return false;
+			}
+		},
+
+		async switchChain({chainId}) {
+			const chain = config.chains.find(chain => chain.id === chainId);
+			if (!chain) {
+				throw new SwitchChainError(new Error('chain not found on connector.'));
+			}
+
+			try {
+				const provider = await this.getProvider();
+
+				await provider.request({
+					method: 'wallet_switchEthereumChain',
+					params: [{chainId: numberToHex(chainId)}]
+				});
+
+				return chain;
+			} catch (error) {
+				const message = typeof error === 'string' ? error : (error as ProviderRpcError)?.message;
+				if (/user rejected request/i.test(message)) {
+					throw new UserRejectedRequestError(error as Error);
+				}
+				throw new SwitchChainError(error as Error);
+			}
+		},
+		async createProvider() {
+			if (!initProviderPromise && typeof window !== 'undefined') {
+				initProviderPromise = this.initProvider();
+			}
+			return initProviderPromise;
+		},
+		async initProvider() {
+			const connectKit = await import('@ledgerhq/connect-kit/dist/umd');
+
+			if (enableDebugLogs) {
+				connectKit.enableDebugLogs();
+			}
+
+			const {projectId, requiredChains, requiredMethods, optionalMethods, requiredEvents, optionalEvents} =
+				parameters as LedgerConnectorWcV2Options;
+			const optionalChains = config.chains.map(({id}) => id);
+
+			const checkSupportOptions = {
+				providerType: connectKit.SupportedProviders.Ethereum,
+				walletConnectVersion: 2,
+				projectId,
+				chains: requiredChains,
+				optionalChains,
+				methods: requiredMethods,
+				optionalMethods,
+				events: requiredEvents,
+				optionalEvents,
+				rpcMap: Object.fromEntries(config.chains.map(chain => [chain.id, chain.rpcUrls.default.http[0]!]))
+			};
+			connectKit.checkSupport(checkSupportOptions);
+
+			provider_ = (await connectKit.getProvider()) as unknown as EthereumProvider;
+		},
+		setupListeners() {
+			if (!provider_) {
+				return;
+			}
+			this.removeListeners();
+			provider_.on('accountsChanged', this.onAccountsChanged);
+			provider_.on('chainChanged', this.onChainChanged);
+			provider_.on('disconnect', this.onDisconnect);
+			provider_.on('session_delete', this.onDisconnect);
+			provider_.on('connect', this.onConnect?.bind(this));
+		},
+		removeListeners() {
+			if (!provider_) {
+				return;
+			}
+			provider_.removeListener('accountsChanged', this.onAccountsChanged);
+			provider_.removeListener('chainChanged', this.onChainChanged);
+			provider_.removeListener('disconnect', this.onDisconnect);
+			provider_.removeListener('session_delete', this.onDisconnect);
+			provider_.removeListener('connect', this.onConnect?.bind(this));
+		},
+		onAccountsChanged(accounts: string[]) {
+			if (accounts.length === 0) {
+				config.emitter.emit('disconnect');
+			} else {
+				config.emitter.emit('change', {accounts: accounts.map(getAddress)});
+			}
+		},
+		onChainChanged(chainId: number | string) {
+			const id = normalizeChainId(chainId);
+			config.emitter.emit('change', {chainId: id});
+		},
+		onDisconnect() {
+			config.emitter.emit('disconnect');
+		},
+		async onConnect() {
+			const accounts = await this.getAccounts();
+			const chainId = await this.getChainId();
+			config.emitter.emit('connect', {accounts, chainId});
+		}
+	}));
+}
+export type MyWalletOptions = {
+	projectId: string;
+};
+export const legderLiveIFrameWallet = ({projectId}: MyWalletOptions): Wallet => ({
+	id: 'ledger-live',
+	iconBackground: '#000',
+	iconAccent: '#000',
+	name: 'Ledger Live',
+	iconUrl:
+		'https://raw.githubusercontent.com/rainbow-me/rainbowkit/d8c64ee4baf865d3452a6b92e0525c123f680ec1/packages/rainbowkit/src/wallets/walletConnectors/ledgerWallet/ledgerWallet.svg',
+	downloadUrls: {
+		android: 'https://play.google.com/store/apps/details?id=com.ledger.live',
+		ios: 'https://apps.apple.com/us/app/ledger-live-web3-wallet/id1361671700',
+		mobile: 'https://www.ledger.com/ledger-live',
+		qrCode: 'https://r354.adj.st/?adj_t=t2esmlk',
+		windows: 'https://www.ledger.com/ledger-live/download',
+		macos: 'https://www.ledger.com/ledger-live/download',
+		linux: 'https://www.ledger.com/ledger-live/download',
+		desktop: 'https://www.ledger.com/ledger-live'
+	},
+	desktop: {
+		getUri: (uri: string) => {
+			return `ledgerlive://wc?uri=${encodeURIComponent(uri)}`;
+		},
+		instructions: {
+			learnMoreUrl: 'https://support.ledger.com/hc/en-us/articles/4404389503889-Getting-started-with-Ledger-Live',
+			steps: [
+				{
+					description: 'wallet_connectors.ledger.desktop.step1.description',
+					step: 'install',
+					title: 'wallet_connectors.ledger.desktop.step1.title'
+				},
+				{
+					description: 'wallet_connectors.ledger.desktop.step2.description',
+					step: 'create',
+					title: 'wallet_connectors.ledger.desktop.step2.title'
+				},
+				{
+					description: 'wallet_connectors.ledger.desktop.step3.description',
+					step: 'connect',
+					title: 'wallet_connectors.ledger.desktop.step3.title'
+				}
+			]
+		}
+	},
+	qrCode: {
+		getUri: (uri: string) => {
+			return `ledgerlive://wc?uri=${encodeURIComponent(uri)}`;
+		},
+		instructions: {
+			learnMoreUrl: 'https://support.ledger.com/hc/en-us/articles/4404389503889-Getting-started-with-Ledger-Live',
+			steps: [
+				{
+					description: 'wallet_connectors.ledger.qr_code.step1.description',
+					step: 'install',
+					title: 'wallet_connectors.ledger.qr_code.step1.title'
+				},
+				{
+					description: 'wallet_connectors.ledger.qr_code.step2.description',
+					step: 'create',
+					title: 'wallet_connectors.ledger.qr_code.step2.title'
+				},
+				{
+					description: 'wallet_connectors.ledger.qr_code.step3.description',
+					step: 'scan',
+					title: 'wallet_connectors.ledger.qr_code.step3.title'
+				}
+			]
+		}
+	},
+	createConnector: (walletDetails: WalletDetailsParams) => {
+		return createConnector(config => ({
+			...ledger({projectId})(config),
+			...walletDetails
+		}));
+	}
+});
