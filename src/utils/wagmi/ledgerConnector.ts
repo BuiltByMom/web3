@@ -250,65 +250,14 @@ export const legderLiveIFrameWallet = ({projectId}: MyWalletOptions): Wallet => 
 	iconUrl:
 		'https://raw.githubusercontent.com/rainbow-me/rainbowkit/d8c64ee4baf865d3452a6b92e0525c123f680ec1/packages/rainbowkit/src/wallets/walletConnectors/ledgerWallet/ledgerWallet.svg',
 	downloadUrls: {
-		android: 'https://play.google.com/store/apps/details?id=com.ledger.live',
-		ios: 'https://apps.apple.com/us/app/ledger-live-web3-wallet/id1361671700',
-		mobile: 'https://www.ledger.com/ledger-live',
-		qrCode: 'https://r354.adj.st/?adj_t=t2esmlk',
-		windows: 'https://www.ledger.com/ledger-live/download',
-		macos: 'https://www.ledger.com/ledger-live/download',
-		linux: 'https://www.ledger.com/ledger-live/download',
-		desktop: 'https://www.ledger.com/ledger-live'
+		// We're opting not to provide a download prompt if the application is not
+		// already running as a Safe App within the context of the Safe browser,
+		// since it's unlikely to be a desired behavior for users.
 	},
-	desktop: {
-		getUri: (uri: string) => {
-			return `ledgerlive://wc?uri=${encodeURIComponent(uri)}`;
-		},
-		instructions: {
-			learnMoreUrl: 'https://support.ledger.com/hc/en-us/articles/4404389503889-Getting-started-with-Ledger-Live',
-			steps: [
-				{
-					description: 'wallet_connectors.ledger.desktop.step1.description',
-					step: 'install',
-					title: 'wallet_connectors.ledger.desktop.step1.title'
-				},
-				{
-					description: 'wallet_connectors.ledger.desktop.step2.description',
-					step: 'create',
-					title: 'wallet_connectors.ledger.desktop.step2.title'
-				},
-				{
-					description: 'wallet_connectors.ledger.desktop.step3.description',
-					step: 'connect',
-					title: 'wallet_connectors.ledger.desktop.step3.title'
-				}
-			]
-		}
-	},
-	qrCode: {
-		getUri: (uri: string) => {
-			return `ledgerlive://wc?uri=${encodeURIComponent(uri)}`;
-		},
-		instructions: {
-			learnMoreUrl: 'https://support.ledger.com/hc/en-us/articles/4404389503889-Getting-started-with-Ledger-Live',
-			steps: [
-				{
-					description: 'wallet_connectors.ledger.qr_code.step1.description',
-					step: 'install',
-					title: 'wallet_connectors.ledger.qr_code.step1.title'
-				},
-				{
-					description: 'wallet_connectors.ledger.qr_code.step2.description',
-					step: 'create',
-					title: 'wallet_connectors.ledger.qr_code.step2.title'
-				},
-				{
-					description: 'wallet_connectors.ledger.qr_code.step3.description',
-					step: 'scan',
-					title: 'wallet_connectors.ledger.qr_code.step3.title'
-				}
-			]
-		}
-	},
+	installed:
+		// Only allowed in iframe context
+		// borrowed from wagmi safe connector
+		!(typeof window === 'undefined') && window?.parent !== window,
 	createConnector: (walletDetails: WalletDetailsParams) => {
 		return createConnector(config => ({
 			...ledger({projectId})(config),
