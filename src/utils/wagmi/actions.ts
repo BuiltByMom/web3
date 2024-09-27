@@ -98,6 +98,7 @@ export async function allowanceOf(props: TAllowanceOf): Promise<bigint> {
 type TApproveERC20 = TWriteTransaction & {
 	spenderAddress: TAddress | undefined;
 	amount: bigint;
+	confirmation?: number;
 };
 export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 	assertAddress(props.spenderAddress, 'spenderAddress');
@@ -108,7 +109,7 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 		return await handleTx(props, {
 			address: toAddress(props.contractAddress),
 			abi: ALTERNATE_ERC20_APPROVE_ABI,
-			confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
+			confirmation: props.confirmation ?? (process.env.NODE_ENV === 'development' ? 1 : undefined),
 			functionName: 'approve',
 			args: [props.spenderAddress, props.amount]
 		});
@@ -117,7 +118,7 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 	return await handleTx(props, {
 		address: props.contractAddress,
 		abi: erc20Abi,
-		confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
+		confirmation: props.confirmation ?? (process.env.NODE_ENV === 'development' ? 1 : undefined),
 		functionName: 'approve',
 		args: [props.spenderAddress, props.amount]
 	});
@@ -132,6 +133,7 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 type TTransferERC20 = TWriteTransaction & {
 	receiver: TAddress | undefined;
 	amount: bigint;
+	confirmation?: number;
 };
 
 export async function transferERC20(props: TTransferERC20): Promise<TTxResponse> {
@@ -141,7 +143,7 @@ export async function transferERC20(props: TTransferERC20): Promise<TTxResponse>
 	return await handleTx(props, {
 		address: toAddress(props.contractAddress),
 		abi: isAddressEqual(props.contractAddress, usdtAddress) ? (usdtAbi as Abi) : erc20Abi,
-		confirmation: process.env.NODE_ENV === 'development' ? 1 : undefined,
+		confirmation: props.confirmation ?? (process.env.NODE_ENV === 'development' ? 1 : undefined),
 		functionName: 'transfer',
 		args: [props.receiver, props.amount]
 	});
@@ -158,6 +160,7 @@ type TTransferEther = Omit<TWriteTransaction, 'contractAddress'> & {
 	receiver: TAddress | undefined;
 	amount: bigint;
 	shouldAdjustForGas?: boolean;
+	confirmation?: number;
 };
 
 export async function transferEther(props: TTransferEther): Promise<TTxResponse> {
@@ -176,7 +179,7 @@ export async function transferEther(props: TTransferEther): Promise<TTxResponse>
 		const receipt = await waitForTransactionReceipt(retrieveConfig(), {
 			chainId: wagmiProvider.chainId,
 			hash,
-			confirmations: process.env.NODE_ENV === 'development' ? 1 : undefined
+			confirmations: props.confirmation ?? (process.env.NODE_ENV === 'development' ? 1 : undefined)
 		});
 		if (receipt.status === 'success') {
 			props.statusHandler?.({...defaultTxStatus, success: true});
