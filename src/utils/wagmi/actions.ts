@@ -105,8 +105,9 @@ export async function approveERC20(props: TApproveERC20): Promise<TTxResponse> {
 	assertAddress(props.contractAddress);
 
 	props.onTrySomethingElse = async (): Promise<TTxResponse> => {
+		const propsWithoutOnTrySomethingElse = {...props, onTrySomethingElse: undefined};
 		assertAddress(props.spenderAddress, 'spenderAddress');
-		return await handleTx(props, {
+		return await handleTx(propsWithoutOnTrySomethingElse, {
 			address: toAddress(props.contractAddress),
 			abi: ALTERNATE_ERC20_APPROVE_ABI,
 			confirmation: props.confirmation ?? (process.env.NODE_ENV === 'development' ? 1 : undefined),
