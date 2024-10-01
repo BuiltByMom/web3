@@ -122,7 +122,10 @@ export async function handleTx(args: TWriteTransaction, props: TPrepareWriteCont
 		}
 
 		if (args.onTrySomethingElse) {
-			if (error.name === 'ContractFunctionExecutionError') {
+			if (
+				error.name === 'ContractFunctionExecutionError' &&
+				error.shortMessage !== 'User rejected the request.'
+			) {
 				return await args.onTrySomethingElse();
 			}
 		}
