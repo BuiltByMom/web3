@@ -123,7 +123,7 @@ export function deepMerge(target: unknown, source: unknown): unknown {
  **************************************************************************/
 type TEncodeFunctionCallArgs = {
 	to: TAddress;
-	value: bigint;
+	value?: bigint;
 } & EncodeFunctionDataParameters;
 
 type TEncodeFunctionCallResp = {
@@ -136,7 +136,7 @@ export function encodeFunctionCall(args: TEncodeFunctionCallArgs): TEncodeFuncti
 
 	return {
 		to,
-		value: toHex(value),
+		value: toHex(value ?? 0n),
 		data: encodeFunctionData(rest)
 	};
 }
