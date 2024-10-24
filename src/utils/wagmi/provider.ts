@@ -124,7 +124,7 @@ export async function handleTx(args: TWriteTransaction, props: TPrepareWriteCont
 		if (args.onTrySomethingElse) {
 			if (
 				error.name === 'ContractFunctionExecutionError' &&
-				error.shortMessage !== 'User rejected the request.'
+				error.shortMessage !== 'User rejected the request.' // We need this because for Arbitrum, rejection is a ContractFunctionExecutionError
 			) {
 				return await args.onTrySomethingElse();
 			}
