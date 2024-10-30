@@ -19,12 +19,17 @@ import type {TransactionReceipt} from 'viem';
 import type {TAddress, TToken, TTokenAmountInputElement} from '../types';
 import type {TTxResponse} from '../utils/wagmi';
 
-export const useBridge = (
-	inputAsset: TTokenAmountInputElement,
-	outputTokenAddress: TAddress | undefined,
-	outputTokenChainId: number | undefined,
-	outputVaultAsset: TToken | undefined
-): {
+export const useBridge = ({
+	inputAsset,
+	outputTokenAddress,
+	outputTokenChainId,
+	outputVaultAsset
+}: {
+	inputAsset: TTokenAmountInputElement;
+	outputTokenAddress: TAddress | undefined;
+	outputTokenChainId: number | undefined;
+	outputVaultAsset: TToken | undefined;
+}): {
 	onExecuteDeposit: (onSuccess: () => void, onFailure?: (errorMessage?: string) => void) => Promise<boolean>;
 	onRetrieveQuote: () => Promise<void>;
 	isFetchingQuote: boolean;
@@ -174,7 +179,6 @@ export const useBridge = (
 					if (!(error instanceof BaseError)) {
 						return {isSuccessful: false, error};
 					}
-					// toast.error(error.shortMessage);
 					console.error(error);
 					return {isSuccessful: false, error};
 				}
