@@ -1,6 +1,6 @@
 import {useCallback, useMemo, useState} from 'react';
 import {encodeFunctionData, erc20Abi, erc4626Abi, maxUint256} from 'viem';
-import {useReadContract} from 'wagmi';
+import {useBlockNumber, useReadContract} from 'wagmi';
 import {useSafeAppsSDK} from '@gnosis.pm/safe-apps-react-sdk';
 import {readContract} from '@wagmi/core';
 
@@ -11,6 +11,7 @@ import {vaultAbi} from '../utils/abi/vaultV2.abi';
 import {depositTo4626VaultViaRouter, depositToVault, retrieveConfig, toWagmiProvider} from '../utils/wagmi';
 import {toBigInt} from './../utils/format';
 
+import type {BaseError, Hex, TransactionReceipt} from 'viem';
 import type {TAddress} from '../types';
 import type {TPermitSignature} from './usePermit.types';
 
@@ -48,7 +49,10 @@ type TUseDepositResp = {
 	maxDepositForUser: bigint; // Maximum amount that can be deposited by the user
 	canDeposit: boolean; // If the token can be deposited`
 	isDepositing: boolean; // If the approval is in progress
-	onDeposit: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to deposit the token
+	onDeposit: (
+		onSuccess?: (receipt?: TransactionReceipt) => void,
+		onFailure?: (errorMessage?: string) => void
+	) => Promise<boolean>; // Function to deposit the token
 };
 
 /**********************************************************************************************
@@ -65,6 +69,8 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 	const {sdk} = useSafeAppsSDK();
 	const {provider, isWalletSafe} = useWeb3();
 	const [isDepositing, set_isDepositing] = useState(false);
+
+	const {data: blockNumber} = useBlockNumber();
 
 	/**********************************************************************************************
 	 ** The ERC-4626 version of the vaults has a method called maxDeposit: this function returns
@@ -180,7 +186,10 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 	 ** wants to use a router or not.
 	 *********************************************************************************************/
 	const onDeposit = useCallback(
-		async (onSuccess?: () => void, onFailure?: () => void): Promise<boolean> => {
+		async (
+			onSuccess?: (receipt?: TransactionReceipt) => void,
+			onFailure?: (errorMessage?: string) => void
+		): Promise<boolean> => {
 			if (!canDeposit) {
 				return false;
 			}
@@ -215,7 +224,7 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 				);
 
 				try {
-					const res = sdk.txs.send({txs: batch});
+					const res = await sdk.txs.send({txs: batch});
 					do {
 						safeTransactionResult = await sdk.txs.getBySafeTxHash((await res).safeTxHash);
 						await new Promise(resolve => setTimeout(resolve, 30_000));
@@ -226,13 +235,29 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 					);
 
 					if (safeTransactionResult.txStatus === 'SUCCESS') {
-						onSuccess?.();
+						const receipt: TransactionReceipt = {
+							transactionHash: res.safeTxHash as Hex,
+							transactionIndex: -1, // Placeholder since Safe tx doesn't have these
+							blockHash: '0x0', // Placeholder since Safe tx doesn't have these
+							blockNumber: blockNumber || 0n,
+							contractAddress: null,
+							cumulativeGasUsed: 0n, // Placeholder since Safe tx doesn't have these
+							effectiveGasPrice: 0n, // Placeholder since Safe tx doesn't have these
+							from: toAddress(args.owner),
+							gasUsed: 0n, // Placeholder since Safe tx doesn't have these
+							logs: [], // Placeholder since Safe tx doesn't have these
+							logsBloom: '0x0', // Placeholder since Safe tx doesn't have these
+							status: 'success',
+							to: toAddress(args.vault),
+							type: 'legacy' // Placeholder since Safe tx doesn't have these
+						};
+						onSuccess?.(receipt);
 					} else {
-						onFailure?.();
+						onFailure?.('Error while creating safe batch');
 					}
 				} catch (err) {
 					console.error(err);
-					onFailure?.();
+					onFailure?.('Error while creating safe batch');
 				} finally {
 					set_isDepositing(false);
 				}
@@ -258,9 +283,13 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 					amount: args.amountToDeposit
 				});
 				if (result.isSuccessful) {
-					onSuccess?.();
+					onSuccess?.(result.receipt);
 				} else {
-					onFailure?.();
+					const errorMessage =
+						(result.error as BaseError).message ||
+						(result.error as BaseError).shortMessage ||
+						(result.error as BaseError).details;
+					onFailure?.(errorMessage || 'Unknown Error');
 				}
 				set_isDepositing(false);
 				return result.isSuccessful;
@@ -342,9 +371,13 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 					multicalls
 				});
 				if (result.isSuccessful) {
-					onSuccess?.();
+					onSuccess?.(result.receipt);
 				} else {
-					onFailure?.();
+					const errorMessage =
+						(result.error as BaseError).message ||
+						(result.error as BaseError).shortMessage ||
+						(result.error as BaseError).details;
+					onFailure?.(errorMessage || 'Unknown Error');
 				}
 				await refetchMaxDepositForUser();
 				set_isDepositing(false);
@@ -359,9 +392,13 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 				amount: args.amountToDeposit
 			});
 			if (result.isSuccessful) {
-				onSuccess?.();
+				onSuccess?.(result.receipt);
 			} else {
-				onFailure?.();
+				const errorMessage =
+					(result.error as BaseError).message ||
+					(result.error as BaseError).shortMessage ||
+					(result.error as BaseError).details;
+				onFailure?.(errorMessage || 'Unknown Error');
 			}
 			await refetchMaxDepositForUser();
 			set_isDepositing(false);
@@ -370,17 +407,18 @@ export function useVaultDeposit(args: TUseDepositArgs): TUseDepositResp {
 		[
 			canDeposit,
 			isWalletSafe,
-			provider,
-			args.version,
 			args.options,
+			args.version,
 			args.chainID,
 			args.vault,
 			args.receiver,
 			args.owner,
 			args.amountToDeposit,
 			args.tokenToDeposit,
+			provider,
 			refetchMaxDepositForUser,
 			sdk.txs,
+			blockNumber,
 			previewDeposit
 		]
 	);
