@@ -35,6 +35,7 @@ type TUseApproveResp = {
 	isApproved: boolean; // If the token is approved or not
 	isInfiniteApproved: boolean; // If the token is approved with infinite allowance
 	permitSignature?: TPermitSignature; // Signature for the permit,
+	isLoading: boolean; // Is fetching allowance
 	onApprove: (onSuccess?: () => void, onFailure?: () => void) => Promise<boolean>; // Function to approve the token
 	onClearPermit: () => void; // Function to clear the permit
 };
@@ -44,7 +45,11 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 	const [permitSignature, set_permitSignature] = useState<TPermitSignature | undefined>(undefined);
 	const [permitAllowance, set_permitAllowance] = useState<bigint | undefined>(undefined);
 
-	const {data: allowance, refetch} = useReadContract({
+	const {
+		data: allowance,
+		isLoading,
+		refetch
+	} = useReadContract({
 		address: args.tokenToApprove,
 		abi: erc20Abi,
 		functionName: 'allowance',
@@ -211,6 +216,7 @@ export function useApprove(args: TUseApproveArgs): TUseApproveResp {
 		amountApproved: args.shouldUsePermit && permitSignature ? permitAllowance || allowance || 0n : allowance || 0n,
 		isApproving,
 		isApproved,
+		isLoading,
 		isInfiniteApproved,
 		permitSignature,
 		onApprove,
